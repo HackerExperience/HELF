@@ -14,8 +14,7 @@ defmodule HELF.Mixfile do
   #
   # Type "mix help compile.app" for more information
   def application do
-    [applications: [:logger, :he_broker, :cowboy],
-     mod: {HELF, []}]
+    [applications: [:logger, :he_broker, :cowboy]]
   end
 
   # Dependencies can be Hex packages:
