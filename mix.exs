@@ -14,7 +14,7 @@ defmodule HELF.Mixfile do
   #
   # Type "mix help compile.app" for more information
   def application do
-    [applications: [:logger, :he_broker],
+    [applications: [:logger, :he_broker, :cowboy],
      mod: {HELF, []}]
   end
 
