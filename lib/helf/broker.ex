@@ -1,5 +1,5 @@
-defmodule Helf.Broker do
-  alias Helf.Error
+defmodule HELF.Broker do
+  alias HELF.Error
   alias HeBroker.Publisher
 
   def call(topic, args) do

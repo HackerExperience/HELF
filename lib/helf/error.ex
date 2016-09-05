@@ -1,4 +1,4 @@
-defmodule Helf.Error do
+defmodule HELF.Error do
 
   def format_reply(error, code, msg) do
     {code, msg}
