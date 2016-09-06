@@ -1,8 +1,12 @@
+require Logger
+
 defmodule HELF.Router do
   @behaviour :cowboy_websocket_handler
 
   # starts this router
   def start_router(port \\ 8080) do
+    Logger.info "Router is listening at #{port}."
+
     routes = [
       {"/ws", __MODULE__, []}
     ]
