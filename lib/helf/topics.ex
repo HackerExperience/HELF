@@ -1,9 +1,9 @@
-defmodule HELM.Router.Topics.TopicRequest do
+defmodule HELF.Router.Topics.TopicRequest do
   @derive [Poison.Encoder]
   defstruct [:topic, :args]
 end
 
-defmodule HELM.Router.Topics do
+defmodule HELF.Router.Topics do
   import Poison.Encoder
   alias HE.Broker
 
