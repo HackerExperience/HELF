@@ -50,6 +50,7 @@ defmodule HELF.Router do
     :ok # TODO: match termination reason
   end
 
+  # decodes the message and forward to the topic route handler
   defp route(msg) do
     case Poison.decode(msg, as: %Topics.Request{}) do
       {:ok, %{topic: topic, args: args}} ->
@@ -59,6 +60,7 @@ defmodule HELF.Router do
     end
   end
 
+  # formats the response before serializing
   defp format_reply(reply) do
     case reply do
       {:ok, res} ->
