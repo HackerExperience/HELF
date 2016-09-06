@@ -1,4 +1,4 @@
-defmodule HelfTest do
+defmodule HELFTest do
   use ExUnit.Case
   doctest Helf
 
