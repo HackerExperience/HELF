@@ -3,7 +3,8 @@ defmodule Mix.Tasks.Router.Start do
 
   @shortdoc "Starts the router"
 
-  def run(port \\ 8080) do
-    {:ok, _} = HELF.Router.start_router port
+  def run(_) do
+    Mix.Tasks.App.Start.run([])
+    :timer.sleep(:infinity)
   end
 end
