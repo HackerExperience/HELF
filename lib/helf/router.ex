@@ -1,5 +1,5 @@
 defmodule HELF.Router do
-  @behavior :cowboy_websocket_handler
+  @behaviour :cowboy_websocket_handler
 
   # starts this router
   def start_router(port \\ 8080) do
@@ -11,15 +11,33 @@ defmodule HELF.Router do
     opts = [port: port]
     env = [dispatch: dispatch]
 
-    {:ok, pid} = :cowboy.start_http(:http, 100, opts, [env: env])
+    {:ok, _} = :cowboy.start_http(:http, 100, opts, [env: env])
   end
 
-  # ping handle to help with connection tests 
+  # setup cowboy connection type
+  def init(_, _req, _opts), do: {:upgrade, :protocol, :cowboy_websocket}
+
+  # setup websocket connection (TODO: check timeout value)
+  def websocket_init(_type, req, _opts), do: {:ok, req, %{}, :infinity}
+
+  # ping message handler, always reply with pong
   def websocket_handle({:text, "ping"}, req, state) do
     {:reply, {:text, "pong"}, req, state}
   end
 
-  # generic message handler
+  # json message handler
   def websocket_handle({:text, message}, req, state) do
+    {:reply, {:text, "pong"}, req, state} # TODO: use the message
   end
+
+  # format and forward elixir messages
+  def websocket_info(message, req, state) do
+    {:reply, {:text, message}, req, state}
+  end
+
+  # termination callback
+  def websocket_terminate(_reason, _req, _state) do
+    :ok # TODO: match termination reason
+  end
+
 end
