@@ -7,8 +7,8 @@ end
 
 defmodule HELF.Router do
   @moduledoc """
-  This module is responsible for mapping and replying requests received via WebSockets
-  into the broker.
+  This module is responsible for websocket request and responses.
+  It should propagate messages into the Broker, then reply back with the response.
   """
 
   alias HELF.Broker
@@ -23,9 +23,9 @@ defmodule HELF.Router do
   }
 
   @doc ~S"""
-    Starts the router, used by a supervisor.
+    Starts the router, usually called from a supervisor.
 
-    Should returns `{:ok, pid}` on normal conditions.
+    Should return `{:ok, pid}` on normal conditions.
   """
 
   def run(port \\ 8080) do
@@ -51,7 +51,7 @@ defmodule HELF.Router do
   def websocket_init(_type, req, _opts), do: {:ok, req, %{}, :infinity}
 
   @doc ~S"""
-  Handles ping messages, simply answers pong.
+  Ping request handler, simply answers with pong.
 
   ## Examples
 
@@ -63,7 +63,7 @@ defmodule HELF.Router do
   end
 
   @doc ~S"""
-  Handles JSON messages.
+  Request handler, deals with JSON message propagation and response.
 
   ## Examples
 
@@ -72,7 +72,6 @@ defmodule HELF.Router do
 
       iex> HELF.Router.websocket_handle({:text, "{\"topic\":\"void\",\"data\":[]}"}, %{}, %{})
       {:reply, {:text, "{\"data\":\"Route `void` not found.\",\"code\":404}"}, %{}, %{}}
-
   """
   def websocket_handle({:text, message}, req, state) do
     res = handle_message(message)
@@ -83,7 +82,7 @@ defmodule HELF.Router do
   end
 
   @doc ~S"""
-  Formats elixir messages into cowboy messages.
+  Reply handler, formats elixir messages into cowboy messages.
 
   # Examples
 
@@ -95,7 +94,7 @@ defmodule HELF.Router do
   end
 
   @doc ~S"""
-  Termination reason check, returns either `:ok` or `:error`.
+  Termination handler, should perform state cleanup, the connection is closed after this call.
 
   # Examples
 
