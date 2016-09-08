@@ -1,9 +1,21 @@
 require Logger
 
+defmodule HELF.Router.Request do
+  @derive [Poison.Encoder]
+  defstruct [:topic, :args]
+end
+
 defmodule HELF.Router do
+  alias HELF.Broker
+  alias HELF.Router.Request
+
   @behaviour :cowboy_websocket_handler
 
-  alias HELF.Router.Topics
+  # plain remapping
+  @plain_remaps %{
+    "account.create" => "account:create",
+    "account.login" => "account:login"
+  }
 
   # starts this router
   def run(port \\ 8080) do
@@ -33,7 +45,7 @@ defmodule HELF.Router do
 
   # json message handler
   def websocket_handle({:text, message}, req, state) do
-    res = route(message)
+    res = handle_message(message)
       |> format_reply
       |> Poison.encode!
 
@@ -50,16 +62,6 @@ defmodule HELF.Router do
     :ok # TODO: match termination reason
   end
 
-  # decodes the message and forward to the topic route handler
-  defp route(msg) do
-    case Poison.decode(msg, as: %Topics.Request{}) do
-      {:ok, %{topic: topic, args: args}} ->
-        Topics.handle_route(topic, args)
-      _ ->
-        {:error, {400, "SyntaxError"}}
-    end
-  end
-
   # formats the response before serializing
   defp format_reply(reply) do
     case reply do
@@ -68,5 +70,38 @@ defmodule HELF.Router do
       {:error, {code, msg}} ->
         %{code: code, data: msg}
     end
+  end
+
+  # decodes the message and forward to the topic route handler
+  defp handle_message(msg) do
+    case Poison.decode(msg, as: %Request{}) do
+      {:ok, %{topic: topic, args: args}} ->
+        handle_route(topic, args)
+      _ ->
+        {:error, {400, "SyntaxError"}}
+    end
+  end
+
+  # try to remap the topic, fallbacks to `do_route`
+  defp handle_route(topic, args) do
+    case Map.get(@plain_remaps, topic) do
+      nil ->
+        route(topic, args)
+      remap ->
+        Broker.call(remap, args)
+    end
+  end
+
+  # simple ping route using json
+  defp route("ping", _) do
+    {:ok, "pong"}
+  end
+
+  # add composed routes here:
+
+
+  # route not found
+  defp route(name, _) do
+    {:error, {404, "Route `#{name}` not found."}}
   end
 end
