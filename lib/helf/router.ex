@@ -24,10 +24,8 @@ defmodule HELF.Router do
 
   @doc ~S"""
     Starts the router, usually called from a supervisor.
-
     Should return `{:ok, pid}` on normal conditions.
   """
-
   def run(port \\ 8080) do
     Logger.info "Router is listening at #{port}."
 
@@ -45,18 +43,19 @@ defmodule HELF.Router do
   # cowboy callbacks
 
   # setup cowboy connection type
+  @doc ~S"""
+  Upgrades the protocol to websocket.
+  """
   def init(_, _req, _opts), do: {:upgrade, :protocol, :cowboy_websocket}
 
-  # setup websocket connection (TODO: check timeout value)
+  # setup websocket connection
+  @doc ~S"""
+  Negotiates the protocol with the client, also sets the connection timeout.
+  """
   def websocket_init(_type, req, _opts), do: {:ok, req, %{}, :infinity}
 
   @doc ~S"""
-  Ping request handler, simply answers with pong.
-
-  ## Examples
-
-      iex> HELF.Router.websocket_handle({:text, "ping"}, %{}, %{})
-      {:reply, {:text, "pong"}, %{}, %{}}
+  Ping request handler, replies with pong.
   """
   def websocket_handle({:text, "ping"}, req, state) do
     {:reply, {:text, "pong"}, req, state}
@@ -64,14 +63,6 @@ defmodule HELF.Router do
 
   @doc ~S"""
   Request handler, deals with JSON message propagation and response.
-
-  ## Examples
-
-      iex> HELF.Router.websocket_handle({:text, "{\"topic\":\"ping\",\"data\":[]}"}, %{}, %{})
-      {:reply, {:text, "{\"data\":\"pong\",\"code\":200}"}, %{}, %{}}
-
-      iex> HELF.Router.websocket_handle({:text, "{\"topic\":\"void\",\"data\":[]}"}, %{}, %{})
-      {:reply, {:text, "{\"data\":\"Route `void` not found.\",\"code\":404}"}, %{}, %{}}
   """
   def websocket_handle({:text, message}, req, state) do
     res = handle_message(message)
@@ -83,23 +74,14 @@ defmodule HELF.Router do
 
   @doc ~S"""
   Reply handler, formats elixir messages into cowboy messages.
-
-  # Examples
-
-     iex> HELF.Router.websocket_info("test", %{}, %{})
-     {:reply, {:text, "test"}, %{}, %{}}
   """
   def websocket_info(message, req, state) do
     {:reply, {:text, message}, req, state}
   end
 
   @doc ~S"""
-  Termination handler, should perform state cleanup, the connection is closed after this call.
-
-  # Examples
-
-      iex> HELF.Router.websocket_terminate(:ok, %{}, %{})
-      :ok
+  Termination handler, should perform state cleanup, the connection is closed
+  after this call.
   """
   def websocket_terminate(_reason, _req, _state) do
     :ok # TODO: match termination reason
