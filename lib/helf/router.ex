@@ -6,18 +6,28 @@ defmodule HELF.Router.Request do
 end
 
 defmodule HELF.Router do
+  @moduledoc """
+  This module is responsible for mapping and replying requests received via WebSockets
+  into the broker.
+  """
+
   alias HELF.Broker
   alias HELF.Router.Request
 
   @behaviour :cowboy_websocket_handler
 
-  # plain remapping
+  # defines plain topic remaps from request topic to broker topic.
   @plain_remaps %{
     "account.create" => "account:create",
     "account.login" => "account:login"
   }
 
-  # starts this router
+  @doc ~S"""
+    Starts the router, used by a supervisor.
+
+    Should returns `{:ok, pid}` on normal conditions.
+  """
+
   def run(port \\ 8080) do
     Logger.info "Router is listening at #{port}."
 
@@ -32,18 +42,38 @@ defmodule HELF.Router do
     {:ok, _} = :cowboy.start_http(:http, 100, opts, [env: env])
   end
 
+  # cowboy callbacks
+
   # setup cowboy connection type
   def init(_, _req, _opts), do: {:upgrade, :protocol, :cowboy_websocket}
 
   # setup websocket connection (TODO: check timeout value)
   def websocket_init(_type, req, _opts), do: {:ok, req, %{}, :infinity}
 
-  # ping message handler, always reply with pong
+  @doc ~S"""
+  Handles ping messages, simply answers pong.
+
+  ## Examples
+
+      iex> HELF.Router.websocket_handle({:text, "ping"}, %{}, %{})
+      {:reply, {:text, "pong"}, %{}, %{}}
+  """
   def websocket_handle({:text, "ping"}, req, state) do
     {:reply, {:text, "pong"}, req, state}
   end
 
-  # json message handler
+  @doc ~S"""
+  Handles JSON messages.
+
+  ## Examples
+
+      iex> HELF.Router.websocket_handle({:text, "{\"topic\":\"ping\",\"data\":[]}"}, %{}, %{})
+      {:reply, {:text, "{\"data\":\"pong\",\"code\":200}"}, %{}, %{}}
+
+      iex> HELF.Router.websocket_handle({:text, "{\"topic\":\"void\",\"data\":[]}"}, %{}, %{})
+      {:reply, {:text, "{\"data\":\"Route `void` not found.\",\"code\":404}"}, %{}, %{}}
+
+  """
   def websocket_handle({:text, message}, req, state) do
     res = handle_message(message)
       |> format_reply
@@ -52,15 +82,31 @@ defmodule HELF.Router do
     {:reply, {:text, res}, req, state}
   end
 
-  # format and forward elixir messages
+  @doc ~S"""
+  Formats elixir messages into cowboy messages.
+
+  # Examples
+
+     iex> HELF.Router.websocket_info("test", %{}, %{})
+     {:reply, {:text, "test"}, %{}, %{}}
+  """
   def websocket_info(message, req, state) do
     {:reply, {:text, message}, req, state}
   end
 
-  # termination callback
+  @doc ~S"""
+  Termination reason check, returns either `:ok` or `:error`.
+
+  # Examples
+
+      iex> HELF.Router.websocket_terminate(:ok, %{}, %{})
+      :ok
+  """
   def websocket_terminate(_reason, _req, _state) do
     :ok # TODO: match termination reason
   end
+
+  # private functions
 
   # formats the response before serializing
   defp format_reply(reply) do
@@ -98,9 +144,6 @@ defmodule HELF.Router do
   end
 
   # add composed routes here:
-
-
-  # route not found
   defp route(name, _) do
     {:error, {404, "Route `#{name}` not found."}}
   end
