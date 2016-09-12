@@ -1,4 +1,5 @@
 require Logger
+require IEx
 
 defmodule HELF.Router.Request do
   @derive [Poison.Encoder]
@@ -102,6 +103,8 @@ defmodule HELF.Router do
   # decodes the message and forward to the topic route handler
   defp handle_message(msg) do
     case Poison.decode(msg, as: %Request{}) do
+      {:ok, %{topic: topic, args: nil}} ->
+        {:error, {400, "UnspecifiedArgs"}}
       {:ok, %{topic: topic, args: args}} ->
         handle_route(topic, args)
       _ ->
