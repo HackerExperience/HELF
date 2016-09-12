@@ -17,6 +17,8 @@ defmodule HELF.Router do
 
   @behaviour :cowboy_websocket_handler
 
+  # TODO: create a method to define routes from outside of the module
+
   # defines plain topic remaps from request topic to broker topic.
   @plain_remaps %{
     "account.create" => "account:create",
