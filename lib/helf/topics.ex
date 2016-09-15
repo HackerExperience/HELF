@@ -34,10 +34,18 @@ defmodule HELF.Router.Topics do
     {:noreply, Map.put(state, topic, action)}
   end
 
+  def handle_call({"ping", args}, _from, state) do
+    {:reply, {:text, "pong"}, state}
+  end
+
   def handle_call({topic, args}, _from, state) do
     case Map.fetch(state, topic) do
-      {:ok, call} when is_function(call) -> {:reply, call.(args), state}
-      {:ok, remap} when is_binary(remap) -> {:reply, Broker.call(remap, args), state}
+      {:ok, call} when is_function(call) ->
+        {:reply, call.(args), state}
+      {:ok, remap} when is_binary(remap) ->
+        {:reply, Broker.call(remap, args), state}
+      _ ->
+        {:reply, {:error, {404, "Route `#{topic}` not found."}}, state}
     end
   end
 end
