@@ -13,6 +13,10 @@ defmodule HELF.Router.Topics do
     Broker.call("router:forward", {topic, args})
   end
 
+  def start_link() do
+    GenServer.start_link(__MODULE__, [])
+  end
+
   def init(_) do
     Broker.subscribe(:helf, "router:register", cast: &handle_register/3)
     Broker.subscribe(:helf, "router:forward", call: &handle_forward/4)
@@ -35,7 +39,7 @@ defmodule HELF.Router.Topics do
   end
 
   def handle_call({"ping", args}, _from, state) do
-    {:reply, {:text, "pong"}, state}
+    {:reply, {:ok, "pong"}, state}
   end
 
   def handle_call({topic, args}, _from, state) do
