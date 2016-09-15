@@ -1,5 +1,5 @@
 defmodule HELF.Broker do
-  alias HELF.Error
+  alias HELF.{Error, Broker}
   alias HeBroker.Publisher
 
   def subscribe(app, route, fun) do
@@ -23,5 +23,4 @@ defmodule HELF.Broker do
     # TODO: use a real HeBroker broadcast function
     Broker.cast(topic, args)
   end
-
 end
