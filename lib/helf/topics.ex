@@ -4,20 +4,18 @@ defmodule HELF.Router.Topics do
   use GenServer
 
   alias HELF.Broker
-  
-  # TODO: swap subscribe and broadcast
 
   def register(topic, action) when is_binary(topic) and (is_binary(action) or is_function(action, 1)) do
-    Broker.cast("router:register", {topic, action})
+    Broker.broadcast("router:register", {topic, action})
   end
 
   def forward(topic, args) do
-    Broker.call("router:forward", {topic, args})
+    Broker.broadcast("router:forward", {topic, args})
   end
 
   def init(_) do
-    HeBroker.Consumer.subscribe(:helf, "router:register", cast: &handle_register/3)
-    HeBroker.Consumer.subscribe(:helf, "router:forward", call: &handle_forward/4)
+    Broker.subscribe(:helf, "router:register", cast: &handle_register/3)
+    Broker.subscribe(:helf, "router:forward", call: &handle_forward/4)
     {:ok, %{}}
   end
 
