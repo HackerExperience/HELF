@@ -13,17 +13,9 @@ defmodule HELF.Router do
   """
 
   alias HELF.Broker
-  alias HELF.Router.Request
+  alias HELF.Router.{Request, Topics}
 
   @behaviour :cowboy_websocket_handler
-
-  # TODO: create a method to define routes from outside of the module
-
-  # defines plain topic remaps from request topic to broker topic.
-  @plain_remaps %{
-    "account.create" => "account:create",
-    "account.login" => "account:login"
-  }
 
   @doc ~S"""
     Starts the router, usually called from a supervisor.
@@ -108,29 +100,9 @@ defmodule HELF.Router do
       {:ok, %{topic: topic, args: nil}} ->
         {:error, {400, "UnspecifiedArgs"}}
       {:ok, %{topic: topic, args: args}} ->
-        handle_route(topic, args)
+        Topics.forward(topic, args)
       _ ->
         {:error, {400, "SyntaxError"}}
     end
-  end
-
-  # try to remap the topic, fallbacks to `do_route`
-  defp handle_route(topic, args) do
-    case Map.get(@plain_remaps, topic) do
-      nil ->
-        route(topic, args)
-      remap ->
-        Broker.call(remap, args)
-    end
-  end
-
-  # simple ping route using json
-  defp route("ping", _) do
-    {:ok, "pong"}
-  end
-
-  # add composed routes here:
-  defp route(name, _) do
-    {:error, {404, "Route `#{name}` not found."}}
   end
 end
