@@ -10,7 +10,7 @@ defmodule HELF.Router.Topics do
   end
 
   def forward(topic, args) do
-    Broker.broadcast("router:forward", {topic, args})
+    Broker.call("router:forward", {topic, args})
   end
 
   def init(_) do
