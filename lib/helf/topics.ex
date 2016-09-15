@@ -1,0 +1,45 @@
+require Logger
+
+defmodule HELF.Router.Topics do
+  use GenServer
+
+  alias HELF.Broker
+  
+  # TODO: swap subscribe and broadcast
+
+  def register(topic, action) when is_binary(topic) and (is_binary(action) or is_function(action, 1)) do
+    Broker.cast("router:register", {topic, action})
+  end
+
+  def forward(topic, args) do
+    Broker.call("router:forward", {topic, args})
+  end
+
+  def init(_) do
+    HeBroker.Consumer.subscribe(:helf, "router:register", cast: &handle_register/3)
+    HeBroker.Consumer.subscribe(:helf, "router:forward", call: &handle_forward/4)
+    {:ok, %{}}
+  end
+
+  def handle_register(pid, _, {topic, action}) do
+    GenServer.cast(pid, {topic, action})
+  end
+
+  def handle_forward(pid, _, {topic, args}, timeout) do
+    case GenServer.call(pid, {topic, args}, timeout) do
+      :ok -> {:reply, :ok}
+      msg -> {:reply, msg}
+    end
+  end
+
+  def handle_cast({topic, action}, state) do
+    {:noreply, Map.put(state, topic, action)}
+  end
+
+  def handle_call({topic, args}, _from, state) do
+    case Map.fetch(state, topic) do
+      {:ok, call} when is_function(call) -> {:reply, call.(args), state}
+      {:ok, remap} when is_binary(remap) -> {:reply, Broker.call(remap, args), state}
+    end
+  end
+end
