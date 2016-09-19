@@ -36,7 +36,7 @@ defmodule HELF.Router.Topics do
     {:noreply, Map.put(state, topic, action)}
   end
 
-  def handle_call({"ping", args}, _from, state) do
+  def handle_call({"ping", _args}, _from, state) do
     {:reply, {:ok, "pong"}, state}
   end
 

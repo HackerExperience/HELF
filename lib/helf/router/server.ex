@@ -11,7 +11,6 @@ defmodule HELF.Router.Server do
   It should propagate messages into the Broker, then reply back with the response.
   """
 
-  alias HELF.Broker
   alias HELF.Router.{Request, Topics}
 
   @behaviour :cowboy_websocket_handler
