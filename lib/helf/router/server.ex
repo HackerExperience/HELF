@@ -1,6 +1,3 @@
-require Logger
-require IEx
-
 defmodule HELF.Router.Request do
   @derive [Poison.Encoder]
   defstruct [:topic, :args]

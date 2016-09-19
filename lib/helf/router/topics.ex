@@ -1,5 +1,3 @@
-require Logger
-
 defmodule HELF.Router.Topics do
   use GenServer
 
