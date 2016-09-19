@@ -97,12 +97,12 @@ defmodule HELF.Router do
   # decodes the message and forward to the topic route handler
   defp handle_message(msg) do
     case Poison.decode(msg, as: %Request{}) do
-      {:ok, %{topic: topic, args: nil}} ->
-        {:error, {400, "UnspecifiedArgs"}}
+      {:ok, %{topic: topic, args: args}} when not is_binary(topic) or is_nil(args) ->
+        {:error, {400, "Invalid request"}}
       {:ok, %{topic: topic, args: args}} ->
         Topics.forward(topic, args)
       _ ->
-        {:error, {400, "SyntaxError"}}
+        {:error, {400, "Invalid JSON"}}
     end
   end
 end

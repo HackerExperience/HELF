@@ -49,7 +49,7 @@ defmodule HELF.Router.Topics do
       {:ok, remap} when is_binary(remap) ->
         {:reply, Broker.call(remap, args), state}
       _ ->
-        {:reply, {:error, {404, "Route `#{topic}` not found."}}, state}
+        {:reply, {:error, {404, "Route not found"}}, state}
     end
   end
 end
