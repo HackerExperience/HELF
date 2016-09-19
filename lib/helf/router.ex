@@ -7,8 +7,8 @@ defmodule HELF.Router do
     Supervisor.start_link(__MODULE__, [])
   end
 
-  def register_route(topic, action), do: Topics.register(topic, action)
-  
+  def register(topic, action), do: Topics.register(topic, action)
+
   def init([]) do
     children = [
       worker(Server, [], function: :run),
