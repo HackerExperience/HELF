@@ -19,7 +19,7 @@ defmodule HELF.Router.Server do
     Starts the router, usually called from a supervisor.
     Should return `{:ok, pid}` on normal conditions.
   """
-  def run(port \\ 8080) do
+  def run(port) do
     Logger.info "Router is listening at #{port}."
 
     routes = [

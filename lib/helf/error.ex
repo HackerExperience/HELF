@@ -1,5 +1,4 @@
 defmodule HELF.Error do
-
   def format_reply(_error, code, msg) do
     {code, msg}
   end
@@ -18,5 +17,4 @@ defmodule HELF.Error do
         {500, "Something went wrong"}
     end
   end
-
 end

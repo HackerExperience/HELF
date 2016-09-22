@@ -1,20 +1,47 @@
 defmodule HELF.Router do
   use Supervisor
 
-  alias HELF.Router.{Server, Topics}
+  alias HELF.Router
 
+  @doc ~S"""
+    Starts `HELF.Router` using the default backend.
+  """
   def start_link do
-    Supervisor.start_link(__MODULE__, [])
+    port = Application.fetch_env!(:helf, :port)
+    Supervisor.start_link(__MODULE__, [:cowboy, port])
   end
 
-  def register(topic, action), do: Topics.register(topic, action)
+  @doc ~S"""
+    Starts `HELF.Router` using the default backend on given port.
+  """
+  def start_link(port) when is_integer(port) do
+    Supervisor.start_link(__MODULE__, [:cowboy, port])
+  end
 
-  def init([]) do
+  @doc ~S"""
+    Starts `HELF.Router` using given backend.
+  """
+  def start_link(backend, args \\ []) when is_atom(backend) do
+    Supervisor.start_link(__MODULE__, [backend, args])
+  end
+
+  @doc ~S"""
+    Starts `HELF.Router` using the default backend.
+  """
+  def init([:cowboy, port]), do: do_init(worker(Router.Server, [port], function: :run))
+
+  # Starts both backend and topic registering service.
+  defp do_init(backend) do
     children = [
-      worker(Server, [], function: :run),
-      worker(Topics, [])
+      backend,
+      worker(Router.Topics, [])
     ]
 
     supervise(children, strategy: :one_for_one)
   end
+
+  @doc ~S"""
+    Forwards params to `Router.Topics.register`.
+  """
+  def register(topic, action), do: Router.Topics.register(topic, action)
 end

@@ -29,9 +29,9 @@ defmodule HELF.Mixfile do
   # Type "mix help deps" for more examples and options
   defp deps do
     [
-      {:he_broker, git: "ssh://git@git.hackerexperience.com/diffusion/BROKER/HEBroker.git"},
       {:cowboy,"~> 1.0"},
-      {:poison, "~> 2.0"}
+      {:poison, "~> 2.0"},
+      {:he_broker, git: "ssh://git@git.hackerexperience.com/diffusion/BROKER/HEBroker.git"}
     ]
   end
 end
