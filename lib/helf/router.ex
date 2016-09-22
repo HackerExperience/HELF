@@ -1,3 +1,5 @@
+require Logger
+
 defmodule HELF.Router do
   use Supervisor
 
@@ -7,7 +9,7 @@ defmodule HELF.Router do
     Starts `HELF.Router` using the default backend.
   """
   def start_link do
-    port = Application.fetch_env!(:helf, :port)
+    port = do_get_port
     Supervisor.start_link(__MODULE__, [:cowboy, port])
   end
 
@@ -38,6 +40,16 @@ defmodule HELF.Router do
     ]
 
     supervise(children, strategy: :one_for_one)
+  end
+
+  # Tries to get the port without breaking compatibility with HELF 2
+  defp do_get_port do
+    case Application.fetch_env(:helf, :port) do
+      {:ok, port} ->
+        Logger.warn "Invalid :helf configuration, :port is deprecated, change to :router_port."
+        port
+      :error -> Application.fetch_env!(:helf, :router_port)
+    end
   end
 
   @doc ~S"""
