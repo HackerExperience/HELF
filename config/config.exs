@@ -1,4 +1,4 @@
 use Mix.Config
 
 config :helf,
-  port: 8080
+  router_port: 8080
