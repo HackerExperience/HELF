@@ -4,7 +4,7 @@ defmodule HELF.Router.Topics do
   alias HELF.Broker
 
   def register(topic, action) when is_binary(topic) and (is_binary(action) or is_function(action, 1)) do
-    Broker.broadcast("router:register", {topic, action})
+    Broker.cast("router:register", {topic, action})
   end
 
   def forward(topic, args) do

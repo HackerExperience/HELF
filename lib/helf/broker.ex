@@ -1,3 +1,5 @@
+require Logger
+
 defmodule HELF.Broker do
   use Supervisor
 
@@ -56,7 +58,7 @@ defmodule HELF.Broker do
     Sends an asynchronous message to all listeners of given route.
   """
   def broadcast(topic, args) do
-    # TODO: use a real HeBroker broadcast function
+    Logger.warn "HELF.Broker.broadcast/2 may be deprecated, please use cast instead."
     HELF.Broker.cast(topic, args)
   end
 end
