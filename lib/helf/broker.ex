@@ -38,9 +38,9 @@ defmodule HELF.Broker do
   @doc ~S"""
     Sends a synchronous message to given route.
   """
-  def call(topic, args) do
+  def call(topic, args, timeout \\ 5000) do
     publisher = Publisher.start_link
-    case Publisher.call(publisher, topic, args) do
+    case Publisher.call(publisher, topic, args, timeout) do
       {:reply, res} -> res
        :noreply -> {:error, Error.format_reply(:noreply, 500, "Did not get a reply")}
     end

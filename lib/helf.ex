@@ -10,7 +10,6 @@ defmodule HELF.App do
     ]
 
     opts = [strategy: :one_for_one, name: HELF.Supervisor]
-
     {:ok, _} = Supervisor.start_link(children, opts)
   end
 end
