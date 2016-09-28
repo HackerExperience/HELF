@@ -25,7 +25,9 @@ defmodule HELF.Tester do
     Tester.broker_cast(pid, "event:name", "a") # -> should pass
     Tester.broker_cast(pid, "event:name", "b") # -> should fail and crash the server
 
-    Things TODO: Check if there is better ways to crash the server
+    Things TODO:
+        * Check if there is better ways to crash the server
+        * Check how to integrate with ExUnit, a good read is https://goo.gl/JwAck2
   """
 
   alias HELF.Tester
@@ -82,6 +84,13 @@ defmodule HELF.Tester do
   end
 
   @doc ~S"""
+  Stops the server.
+  """
+  def stop(pid, reason, timeout \\ 5000) do
+    GenServer.stop(pid, reason, timeout)
+  end
+
+  @doc ~S"""
   Initializes the server with a name parameter.
   """
   def init(name) do
@@ -116,7 +125,7 @@ defmodule HELF.Tester do
   Makes an async Broker call.
   """
   def handle_cast({:broker_call, topic, args, timeout}, state) do
-    Task.async(fn -> Broker.call(topic, args, timeout) end)
+    Broker.call(topic, args, timeout)
     {:noreply, state}
   end
 
