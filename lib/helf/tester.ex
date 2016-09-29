@@ -37,20 +37,33 @@ defmodule HELF.Tester do
 
   This example is not the best use case since we used Broker.call, but it shows
   how to listen to cast routes.
+
+  TODO: add unsubscribe
   """
 
+  # state format
   defstruct target: nil, types: %{cast: %{}, call: %{}}
 
+  # valid types
   @valid_types [:call, :cast]
 
+  @doc ~S"""
+  Starts the Tester server.
+  """
   def start_link(target) do
     GenServer.start_link(__MODULE__, target)
   end
 
+  @doc ~S"""
+  Initializes the Tester state.
+  """
   def init(target) do
     {:ok, %__MODULE__{target: target}}
   end
 
+  @doc ~S"""
+  Adds a listener to any Broker.call that targets given topic.
+  """
   def listen(pid, :call, service, topic) do
     Broker.subscribe(service, topic, call:
       fn _,_,data,_ ->
@@ -58,6 +71,9 @@ defmodule HELF.Tester do
       end)
   end
 
+  @doc ~S"""
+  Adds a listener to any Broker.cast that targets given topic.
+  """
   def listen(pid, :cast, service, topic) do
     Broker.subscribe(service, topic, cast:
       fn _,_,data ->
@@ -65,6 +81,9 @@ defmodule HELF.Tester do
       end)
   end
 
+  @doc ~S"""
+  Called from Broker to notify the Tester.
+  """
   def notify(pid, type, topic, req) do
     case type do
       foo when foo in @valid_types -> GenServer.cast(pid, {:notify, type, topic, req})
@@ -72,6 +91,10 @@ defmodule HELF.Tester do
     end
   end
 
+  @doc ~S"""
+  Handles notifications, sends a message to the father process with the type and topic
+  of the notification.
+  """
   def handle_cast({:notify, type, topic, req}, state) do
     with topics <- Map.get(state.types, type),
          topics <- Map.put(topics, topic, req),
@@ -84,33 +107,49 @@ defmodule HELF.Tester do
     end
   end
 
+  @doc ~S"""
+  Checks if a Broker.call was received, returns a tuple holding `:ok` or `:error`, and the data.
+  Timeout defaults to 100.
+  """
   def assert(pid, :call, topic) do
-    do_assert(pid, :call, topic, 100)
+    assert(pid, :call, topic, 100)
   end
 
+  @doc ~S"""
+  Checks if a Broker.cast was received, returns a tuple holding `:ok` or `:error`, and the data.
+  Timeout defaults to 100.
+  """
   def assert(pid, :cast, topic) do
-    do_assert(pid, :cast, topic, 100)
+    assert(pid, :cast, topic, 100)
   end
 
+  @doc ~S"""
+  Checks if a Broker.cast was received, returns a tuple holding `:ok` or `:error`, and the data.
+  Also accepts a timeout parameter.
+  """
   def assert(pid, :call, topic, timeout) do
-    do_assert(pid, :call, topic, timeout)
+    GenServer.call(pid, {:assert, :call, topic}, timeout)
   end
 
+  @doc ~S"""
+  Checks if a Broker.cast was received, returns a tuple holding `:ok` or `:error`, and the data.
+  Also accepts a timeout parameter.
+  """
   def assert(pid, :cast, topic, timeout) do
-    do_assert(pid, :cast, topic, timeout)
+    GenServer.call(pid, {:assert, :cast, topic}, timeout)
   end
-
-  defp do_assert(pid, type, topic, timeout) do
-    GenServer.call(pid, {:assert, type, topic}, timeout)
-  end
-
+  
+  @doc ~S"""
+  Tries to find data from given type and topic, returns {:ok, data} when the data is
+  found, and :error when not.
+  """
   def handle_call({:assert, type, topic}, _from, state) do
     topics = Map.get(state.types, type)
     case Map.get(topics, topic) do
       reply when not is_nil(reply) ->
         with {_, topics} <- Map.pop(topics, topic),
-             types  <- Map.put(state.types, type, topics),
-             state  <- Map.put(state, :types, types),
+             types       <- Map.put(state.types, type, topics),
+             state       <- Map.put(state, :types, types),
           do: {:reply, {:ok, reply}, state}
       _ -> {:reply, :error, state}
     end
