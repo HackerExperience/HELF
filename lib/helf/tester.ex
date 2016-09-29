@@ -1,139 +1,118 @@
-defmodule HELF.Tester.CheckError do
-  defexception message: ""
-end
 
 defmodule HELF.Tester do
   use GenServer
 
+  alias HELF.Broker
+
   @moduledoc """
-  This is an experimental server for testing the broker.
-  It is not stable and may change dramatically.
+  Experimental HELF Tester module.
+  It's currently not stable, but the API might not change that much.
 
   Example Usage:
 
-    alias HELF.Tester
-    {:ok, pid} = Tester.start_link(:tester_test)
+      # starts the tester genserver
+      {:ok, pid} = Tester.start_link(self())
 
-    Tester.register(pid, "event:name", cast:
-      fn msg when is_binary(msg) ->
-        case msg do
-          "a" -> :ok
-          _ -> {:error, "Expected \"a\"."}
-        enmod
+      # listen to this route
+      Tester.listen(pid, :cast, :test_service, "event:account:created")
+
+      # payload for account creation
+      account = %{
+        email: "exampl@test.com",
+        password: "12345678",
+        password_confirmation: "12345678"
+      }
+
+      # call a broker route you know that should ping the route we just listened
+      Broker.call("account:create", account)
+
+      # assert that the route was called
+      assert_receive {:cast, "event:account:created"}
+
+      # get the state while asserting that the message arrived
+      {:ok, params} = Tester.assert(pid, :cast, "event:account:created")
+
+      # make assertions with the parameters
+      assert is_binary(params)
+
+  This example is not the best use case since we used Broker.call, but it shows
+  how to listen to cast routes.
+  """
+
+  defstruct target: nil, types: %{cast: %{}, call: %{}}
+
+  @valid_types [:call, :cast]
+
+  def start_link(target) do
+    GenServer.start_link(__MODULE__, target)
+  end
+
+  def init(target) do
+    {:ok, %__MODULE__{target: target}}
+  end
+
+  def listen(pid, :call, service, topic) do
+    Broker.subscribe(service, topic, call:
+      fn _,_,data,_ ->
+        notify(pid, :call, topic, data)
       end)
-
-    Tester.broker_cast(pid, "event:name", "a") # -> should pass
-    Tester.broker_cast(pid, "event:name", "b") # -> should fail and crash the server
-
-    Things TODO:
-        * Check if there is better ways to crash the server
-        * Check how to integrate with ExUnit, a good read is https://goo.gl/JwAck2
-  """
-
-  alias HELF.Tester
-  alias HELF.Broker
-
-  defstruct(name: nil)
-
-  @doc ~S"""
-  Registers a call checker.
-  """
-  def register(pid, topic, call: checker) do
-    GenServer.call(pid, {:add_call, topic, checker})
   end
 
-  @doc ~S"""
-  Registers a cast checker
-  """
-  def register(pid, topic, cast: checker) do
-    GenServer.call(pid, {:add_cast, topic, checker})
+  def listen(pid, :cast, service, topic) do
+    Broker.subscribe(service, topic, cast:
+      fn _,_,data ->
+        notify(pid, :cast, topic, data)
+      end)
   end
 
-  @doc ~S"""
-  Makes a broker call from the Tester process.
-  """
-  def broker_call(pid, topic, args, timeout \\ 5000) do
-    GenServer.cast(pid, {:broker_call, topic, args, timeout})
-  end
-
-  @doc ~S"""
-  Makes a broker cast from the Tester process.
-  """
-  def broker_cast(pid, topic, args) do
-    GenServer.cast(pid, {:broker_cast, topic, args})
-  end
-
-  # Calls the checker, throws an error with tester name and topic
-  defp check(checker, args, topic, state) do
-    case checker.(args) do
-      :ok -> :ok
-      :error ->
-        raise(Tester.CheckError,
-          message: "Tester '#{state.name}/#{topic}' failed with no explicit reason.")
-      {:error, msg} ->
-        raise(Tester.CheckError,
-          message: "Tester '#{state.name}/#{topic}' failed:\n  #{msg}")
+  def notify(pid, type, topic, req) do
+    case type do
+      foo when foo in @valid_types -> GenServer.cast(pid, {:notify, type, topic, req})
+      _ -> :error
     end
   end
 
-  @doc ~S"""
-  Starts the server, takes a name parameter.
-  """
-  def start_link(name) do
-    GenServer.start_link(__MODULE__, name)
+  def handle_cast({:notify, type, topic, req}, state) do
+    with topics <- Map.get(state.types, type),
+         topics <- Map.put(topics, topic, req),
+         types  <- Map.put(state.types, type, topics),
+         state  <- Map.put(state, :types, types) do
+
+      send(state.target, {type, topic})
+
+      {:noreply, state}
+    end
   end
 
-  @doc ~S"""
-  Stops the server.
-  """
-  def stop(pid, reason, timeout \\ 5000) do
-    GenServer.stop(pid, reason, timeout)
+  def assert(pid, :call, topic) do
+    do_assert(pid, :call, topic, 100)
   end
 
-  @doc ~S"""
-  Initializes the server with a name parameter.
-  """
-  def init(name) do
-    {:ok, %__MODULE__{name: name}}
+  def assert(pid, :cast, topic) do
+    do_assert(pid, :cast, topic, 100)
   end
 
-  @doc ~S"""
-  Adds a call checker to the state.
-  """
-  def handle_call({:add_call, topic, checker}, _from, state) do
-    Broker.subscribe(state.name, topic, call:
-      fn _,_,args,_ ->
-        check(checker, args, topic,  state)
-      end)
-
-    {:reply, :ok, state}
+  def assert(pid, :call, topic, timeout) do
+    do_assert(pid, :call, topic, timeout)
   end
 
-  @doc ~S"""
-  Adds a cast checker to the state.
-  """
-  def handle_call({:add_cast, topic, checker}, _from, state) do
-    Broker.subscribe(state.name, topic, cast:
-      fn _,_,args ->
-        check(checker, args, topic, state)
-      end)
-
-    {:reply, :ok, state}
+  def assert(pid, :cast, topic, timeout) do
+    do_assert(pid, :cast, topic, timeout)
   end
 
-  @doc ~S"""
-  Makes an async Broker call.
-  """
-  def handle_cast({:broker_call, topic, args, timeout}, state) do
-    Broker.call(topic, args, timeout)
-    {:noreply, state}
+  defp do_assert(pid, type, topic, timeout) do
+    GenServer.call(pid, {:assert, type, topic}, timeout)
   end
 
-  @doc ~S"""
-  Makes a Broker cast.
-  """
-  def handle_cast({:broker_cast, topic, args}, state) do
-    Broker.cast(topic, args)
-    {:noreply, state}
+  def handle_call({:assert, type, topic}, _from, state) do
+    topics = Map.get(state.types, type)
+    case Map.get(topics, topic) do
+      reply when not is_nil(reply) ->
+        with {_, topics} <- Map.pop(topics, topic),
+             types  <- Map.put(state.types, type, topics),
+             state  <- Map.put(state, :types, types),
+          do: {:reply, {:ok, reply}, state}
+      _ -> {:reply, :error, state}
+    end
   end
 end
