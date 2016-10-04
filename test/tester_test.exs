@@ -14,7 +14,7 @@ defmodule HELF.TesterTest do
     service = :test01
     {:ok, pid} = Tester.start_link(service, self())
 
-    Tester.listen(pid, :cast, service, "account:create")
+    Tester.listen(pid, :cast, "account:create")
 
     Tester.notify(pid, :cast, "account:create", %{username: "foo"})
     assert_receive {:cast, service, "account:create"}
@@ -25,7 +25,7 @@ defmodule HELF.TesterTest do
     service = :test02
     {:ok, pid} = Tester.start_link(service, self())
 
-    Tester.listen(pid, :cast, service, "account:create")
+    Tester.listen(pid, :cast, "account:create")
 
     Tester.notify(pid, :cast, "account:create", %{username: "foo"})
     assert_receive {:cast, service, "account:create"}
@@ -40,7 +40,7 @@ defmodule HELF.TesterTest do
     service = :test02
     {:ok, pid} = Tester.start_link(service, self())
 
-    Tester.listen(pid, :call, service, "account:create")
+    Tester.listen(pid, :call, "account:create")
 
     Tester.notify(pid, :call, "account:create", %{username: "bar"})
 
@@ -52,7 +52,7 @@ defmodule HELF.TesterTest do
     service = :test03
     {:ok, pid} = Tester.start_link(service, self())
 
-    Tester.listen(pid, :call, service, "account:create")
+    Tester.listen(pid, :call, "account:create")
 
     Tester.notify(pid, :call, "account:create", %{username: "foo"})
     assert_receive {:call, service, "account:create"}
@@ -68,8 +68,8 @@ defmodule HELF.TesterTest do
     service = :test03
     {:ok, pid} = Tester.start_link(service, self())
 
-    Tester.listen(pid, :call, service, "account:create")
-    Tester.listen(pid, :cast, service, "account:created")
+    Tester.listen(pid, :call, "account:create")
+    Tester.listen(pid, :cast, "account:created")
     Tester.notify(pid, :call, "account:create", %{username: "foo"})
     Tester.notify(pid, :cast, "account:created", %{username: "bar"})
 
