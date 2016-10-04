@@ -64,7 +64,8 @@ defmodule HELF.Tester do
   @doc ~S"""
   Adds a listener to any Broker.call that targets given topic.
   """
-  def listen(pid, :call, service, topic) do
+  def listen(pid, :call, topic) do
+    service = id(pid)
     Broker.subscribe(service, topic, call:
       fn _,_,data,_ ->
         notify(pid, :call, topic, data)
@@ -74,7 +75,8 @@ defmodule HELF.Tester do
   @doc ~S"""
   Adds a listener to any Broker.cast that targets given topic.
   """
-  def listen(pid, :cast, service, topic) do
+  def listen(pid, :cast, topic) do
+    service = id(pid)
     Broker.subscribe(service, topic, cast:
       fn _,_,data ->
         notify(pid, :cast, topic, data)
@@ -140,6 +142,13 @@ defmodule HELF.Tester do
   end
 
   @doc ~S"""
+  Checks test id
+  """
+  def id(pid, timeout \\ 500) do
+    GenServer.call(pid, :id, timeout)
+  end
+
+  @doc ~S"""
   Tries to find data from given type and topic, returns {:ok, data} when the data is
   found, and :error when not.
   """
@@ -153,5 +162,13 @@ defmodule HELF.Tester do
           do: {:reply, {:ok, reply}, state}
       _ -> {:reply, :error, state}
     end
+  end
+
+  @doc ~S"""
+  Replies with the test id
+  """
+  def handle_call(:id, _from, state) do
+    reply = Map.get(state, :id)
+    {:reply, reply, state}
   end
 end
