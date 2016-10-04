@@ -42,7 +42,7 @@ defmodule HELF.Tester do
   """
 
   # state format
-  defstruct target: nil, types: %{cast: %{}, call: %{}}
+  defstruct id: nil, target: nil, types: %{cast: %{}, call: %{}}
 
   # valid types
   @valid_types [:call, :cast]
@@ -50,15 +50,15 @@ defmodule HELF.Tester do
   @doc ~S"""
   Starts the Tester server.
   """
-  def start_link(target) do
-    GenServer.start_link(__MODULE__, target)
+  def start_link(id, target) do
+    GenServer.start_link(__MODULE__, [id, target])
   end
 
   @doc ~S"""
   Initializes the Tester state.
   """
-  def init(target) do
-    {:ok, %__MODULE__{target: target}}
+  def init([id, target]) do
+    {:ok, %__MODULE__{id: id, target: target}}
   end
 
   @doc ~S"""
@@ -101,7 +101,7 @@ defmodule HELF.Tester do
          types  <- Map.put(state.types, type, topics),
          state  <- Map.put(state, :types, types) do
 
-      send(state.target, {type, topic})
+      send(state.target, {type, state.id, topic})
 
       {:noreply, state}
     end
@@ -138,7 +138,7 @@ defmodule HELF.Tester do
   def assert(pid, :cast, topic, timeout) do
     GenServer.call(pid, {:assert, :cast, topic}, timeout)
   end
-  
+
   @doc ~S"""
   Tries to find data from given type and topic, returns {:ok, data} when the data is
   found, and :error when not.
