@@ -13,14 +13,20 @@ defmodule HELF.Mixfile do
 
   def application do
     [
-      applications: [:logger, :hebroker, :cowboy],
+      applications: applications(Mix.env),
       mod: {HELF.App, []}]
   end
+
+  defp applications(:dev), do: default_applications() ++ [:remix]
+  defp applications(_), do: default_applications()
+  defp default_applications, do: [:logger, :hebroker, :cowboy, :bamboo]
 
   defp deps do
     [
       {:cowboy,"~> 1.0"},
       {:poison, "~> 2.0"},
-      {:hebroker, git: "ssh://git@git.hackerexperience.com/diffusion/BROKER/HEBroker.git", ref: "v0.1"}]
+      {:bamboo, "~> 0.7"},
+      {:hebroker, git: "ssh://git@git.hackerexperience.com/diffusion/BROKER/HEBroker.git", ref: "v0.1"},
+      {:remix, "~> 0.0.1", only: :dev}]
   end
 end
