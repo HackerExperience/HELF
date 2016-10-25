@@ -3,12 +3,19 @@ defmodule HELF.Router.Topics do
 
   alias HELF.Broker
 
-  def register(topic, action) when is_binary(topic) and (is_binary(action) or is_function(action, 1)) do
+  def register(topic, action)
+  when is_binary(topic) and (is_binary(action) or is_function(action, 1))
+  do
     Broker.cast("router:register", {topic, action})
   end
 
   def forward(topic, args) do
-    Broker.call("router:forward", {topic, args})
+    case Broker.call("router:forward", {topic, args}) do
+      {:call, {topic, message}} ->
+        Broker.call(topic, message)
+      return ->
+        return
+    end
   end
 
   def start_link() do
@@ -16,26 +23,29 @@ defmodule HELF.Router.Topics do
   end
 
   def init(_) do
-    Broker.subscribe(:helf, "router:register", cast: &handle_register/3)
-    Broker.subscribe(:helf, "router:forward", call: &handle_forward/4)
+    Broker.subscribe("router:register", cast: &handle_register/4)
+    Broker.subscribe("router:forward", call: &handle_forward/4)
     {:ok, %{}}
   end
 
-  def handle_register(pid, _, {topic, action}) do
+  @doc false
+  def handle_register(pid, _topic, {topic, action}, _request) do
     GenServer.cast(pid, {topic, action})
   end
 
-  def handle_forward(pid, _, {topic, args}, timeout) do
-    case GenServer.call(pid, {topic, args}, timeout) do
-      :ok -> {:reply, :ok}
-      msg -> {:reply, msg}
-    end
+  @doc false
+  def handle_forward(pid, _topic, {topic, args}, _request) do
+    msg = GenServer.call(pid, {topic, args})
+
+    {:reply, msg}
   end
 
+  @doc false
   def handle_cast({topic, action}, state) do
     {:noreply, Map.put(state, topic, action)}
   end
 
+  @doc false
   def handle_call({"ping", _args}, _from, state) do
     {:reply, {:ok, "pong"}, state}
   end
@@ -45,7 +55,7 @@ defmodule HELF.Router.Topics do
       {:ok, call} when is_function(call) ->
         {:reply, call.(args), state}
       {:ok, remap} when is_binary(remap) ->
-        {:reply, Broker.call(remap, args), state}
+        {:reply, {:call, {remap, args}}, state}
       _ ->
         {:reply, {:error, {404, "Route not found"}}, state}
     end
