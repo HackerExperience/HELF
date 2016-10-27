@@ -1,4 +1,5 @@
 defmodule HELF.Mailer do
+
   alias Bamboo.Email, as: BEmail
 
   def email(params \\ []) do

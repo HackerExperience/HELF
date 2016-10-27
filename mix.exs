@@ -4,7 +4,7 @@ defmodule HELF.Mixfile do
   def project do
     [
       app: :helf,
-      version: "0.0.1 ",
+      version: "0.0.1",
       elixir: "~> 1.3",
       build_embedded: Mix.env == :prod,
       start_permanent: Mix.env == :prod,
