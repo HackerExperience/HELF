@@ -1,34 +1,35 @@
-require Logger
-
 defmodule HELF.Router do
+
   use Supervisor
+
+  require Logger
 
   alias HELF.Router
 
-  @doc ~S"""
-    Starts `HELF.Router` using the default backend.
+  @doc """
+  Starts `HELF.Router` using the default backend.
   """
   def start_link do
     port = do_get_port
     Supervisor.start_link(__MODULE__, [:cowboy, port])
   end
 
-  @doc ~S"""
-    Starts `HELF.Router` using the default backend on given port.
+  @doc """
+  Starts `HELF.Router` using the default backend on given port.
   """
   def start_link(port) when is_integer(port) do
     Supervisor.start_link(__MODULE__, [:cowboy, port])
   end
 
-  @doc ~S"""
-    Starts `HELF.Router` using given backend.
+  @doc """
+  Starts `HELF.Router` using given backend.
   """
   def start_link(backend, args \\ []) when is_atom(backend) do
     Supervisor.start_link(__MODULE__, [backend, args])
   end
 
-  @doc ~S"""
-    Starts `HELF.Router` using the default backend.
+  @doc """
+  Starts `HELF.Router` using the default backend.
   """
   def init([:cowboy, port]), do: do_init(worker(Router.Server, [port], function: :run))
 
@@ -52,8 +53,8 @@ defmodule HELF.Router do
     end
   end
 
-  @doc ~S"""
-    Forwards params to `Router.Topics.register`.
+  @doc """
+  Forwards params to `Router.Topics.register`.
   """
   def register(topic, action), do: Router.Topics.register(topic, action)
 end

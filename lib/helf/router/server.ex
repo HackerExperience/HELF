@@ -1,4 +1,3 @@
-require Logger
 
 defmodule HELF.Router.Request do
   @derive [Poison.Encoder]
@@ -11,13 +10,15 @@ defmodule HELF.Router.Server do
   It should propagate messages into the Broker, then reply back with the response.
   """
 
+  require Logger
+
   alias HELF.Router.{Request, Topics}
 
   @behaviour :cowboy_websocket_handler
 
-  @doc ~S"""
-    Starts the router, usually called from a supervisor.
-    Should return `{:ok, pid}` on normal conditions.
+  @doc """
+  Starts the router, usually called from a supervisor.
+  Should return `{:ok, pid}` on normal conditions.
   """
   def run(port) do
     Logger.info "Router is listening at #{port}."
@@ -36,25 +37,25 @@ defmodule HELF.Router.Server do
   # cowboy callbacks
 
   # setup cowboy connection type
-  @doc ~S"""
+  @doc """
   Upgrades the protocol to websocket.
   """
   def init(_, _req, _opts), do: {:upgrade, :protocol, :cowboy_websocket}
 
   # setup websocket connection
-  @doc ~S"""
+  @doc """
   Negotiates the protocol with the client, also sets the connection timeout.
   """
   def websocket_init(_type, req, _opts), do: {:ok, req, %{}, :infinity}
 
-  @doc ~S"""
+  @doc """
   Ping request handler, replies with pong.
   """
   def websocket_handle({:text, "ping"}, req, state) do
     {:reply, {:text, "pong"}, req, state}
   end
 
-  @doc ~S"""
+  @doc """
   Request handler, deals with JSON message propagation and response.
   """
   def websocket_handle({:text, message}, req, state) do
@@ -65,14 +66,14 @@ defmodule HELF.Router.Server do
     {:reply, {:text, res}, req, state}
   end
 
-  @doc ~S"""
+  @doc """
   Reply handler, formats elixir messages into cowboy messages.
   """
   def websocket_info(message, req, state) do
     {:reply, {:text, message}, req, state}
   end
 
-  @doc ~S"""
+  @doc """
   Termination handler, should perform state cleanup, the connection is closed
   after this call.
   """
