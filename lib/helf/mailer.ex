@@ -1,25 +1,31 @@
 defmodule HELF.Mailer do
-  alias Bamboo.Email, as: BEmail
+  alias Bamboo.Email
 
   @mailers Application.fetch_env!(:helf, :mailers)
   @default_sender Application.fetch_env!(:helf, :default_sender)
 
-  def write(params \\ []) do
+  defdelegate create(), to: Email, as: :new_email
+  defdelegate [from(email, sender), to(email, receiver), subject(email, subject)], to: Email
+  defdelegate text(email, sender), to: Email, as: :text_body
+  defdelegate html(email, sender), to: Email, as: :html_body
+
+  def send(params = [_|_]) do
     sender = Keyword.get(params, :from, @default_sender)
     receiver = Keyword.fetch!(params, :to)
     subject = Keyword.fetch!(params, :subject)
     html = Keyword.fetch!(params, :html)
-    text = Keyword.get(params, :text, "")
+    text = Keyword.get(params, :text)
 
-    email = BEmail.new_email()
-    |> BEmail.from(sender)
-    |> BEmail.to(receiver)
-    |> BEmail.subject(subject)
-    |> BEmail.html_body(html)
-    |> BEmail.text_body(text)
+    create()
+    |> from(sender)
+    |> to(receiver)
+    |> subject(subject)
+    |> html(html)
+    |> text(text)
+    |> send()
   end
 
-  def send(email) do
+  def send(email = %Email{}) do
     Enum.reduce_while(@mailers, :error, fn mailer, _ ->
       try do
         mailer.deliver_now(email)
