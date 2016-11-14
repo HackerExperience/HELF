@@ -4,12 +4,26 @@ defmodule HELF.Mailer do
   @mailers Application.fetch_env!(:helf, :mailers)
   @default_sender Application.fetch_env!(:helf, :default_sender)
 
-  defdelegate new(), to: Email, as: :new_email
-  defdelegate from(email, sender), to: Email
-  defdelegate to(email, receiver), to: Email
-  defdelegate subject(email, subject), to: Email
-  defdelegate text(email, sender), to: Email, as: :text_body
-  defdelegate html(email, sender), to: Email, as: :html_body
+  defdelegate new(),
+    to: Email,
+    as: :new_email
+
+  defdelegate from(email, sender),
+    to: Email
+
+  defdelegate to(email, receiver),
+    to: Email
+
+  defdelegate subject(email, subject),
+    to: Email
+
+  defdelegate text(email, sender),
+    to: Email,
+    as: :text_body
+
+  defdelegate html(email, sender),
+    to: Email,
+    as: :html_body
 
   def send(params = [_|_]) do
     sender = Keyword.get(params, :from, @default_sender)
