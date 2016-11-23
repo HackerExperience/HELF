@@ -86,8 +86,6 @@ defmodule HELF.Mailer do
         mailer.deliver_now(email)
         {:halt, {:ok, %__MODULE__{email: email, mailer: mailer}}}
       rescue
-        Bamboo.NilRecipientsError -> {:halt, :error}
-        Bamboo.EmptyFromAddressError -> {:halt, :error}
         Bamboo.MailgunAdapter.ApiError -> {:cont, :error}
         Bamboo.MandrillAdapter.ApiError -> {:cont, :error}
         Bamboo.SendgridAdapter.ApiError -> {:cont, :error}
