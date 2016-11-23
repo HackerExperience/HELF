@@ -95,6 +95,47 @@ defmodule HELF.Mailer do
     end)
   end
 
+  @doc """
+  Sends the `email` from another processs, remember to start the supervisor first.
+  """
+  @spec send_later(Email.t) :: Task.t
+  @spec send_later(Email.t, mailers :: [atom]) :: Task.t
+  def send_later(email) do
+    send_later(email, @mailers)
+  end
+  def send_later(email, mailers) do
+    origin = self()
+    Task.Supervisor.async_nolink supervisor_name, fn ->
+      case send(email, mailers) do
+        {:ok, email} ->
+          # forward email delivery messages for testing
+          receive do
+            {:delivered_email, email} ->
+              Kernel.send(origin, {:delivered_email, email})
+          end
+          {:ok, email}
+        :error ->
+          :error
+      end
+    end
+  end
+
+  @doc """
+  Starts Task supervisor.
+  """
+  @spec start_task_supervisor() :: Supervisor.on_start
+  def start_task_supervisor do
+    Task.Supervisor.start_link(name: supervisor_name)
+  end
+
+  @docp """
+  Yields task supervisor name.
+  """
+  @spec supervisor_name() :: atom
+  defp supervisor_name do
+    HELF.Mailer.TaskSupervisor
+  end
+
   @docp """
   Composes the email using a `Keyword` list.
   """
