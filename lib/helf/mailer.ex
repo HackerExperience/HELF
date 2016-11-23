@@ -1,74 +1,93 @@
 defmodule HELF.Mailer do
+  @moduledoc """
+
+  """
+
   alias Bamboo.Email
+  import Kernel, except: [send: 2]
 
-  @mailers Application.fetch_env!(:helf, :mailers)
-  @default_sender Application.fetch_env!(:helf, :default_sender)
+  @mailers Application.get_env(:helf, :mailers, [])
+  @default_sender Application.get_env(:helf, :default_sender, nil)
 
-  defmodule RaiseMailer do
-    @errors [
-      Bamboo.MailgunAdapter.ApiError,
-      Bamboo.MandrillAdapter.ApiError,
-      Bamboo.SendgridAdapter.ApiError,
-      Bamboo.SentEmail.DeliveriesError,
-      Bamboo.SentEmail.NoDeliveriesError
-    ]
+  @enforce_keys [:email, :mailer]
+  defstruct [:email, :mailer]
 
-    def deliver_now(_email),
-      do: raise(Enum.random(@errors), %{params: "{}", response: "{}"})
-  end
+  @opaque t :: %__MODULE__{}
+  @type params :: [
+    {:from, String.t}
+    | {:to, String.t}
+    | {:subject, String.t}
+    | {:text, String.t}
+    | {:html, String.t}
+  ]
 
-  defmodule TestMailer do
-    use Bamboo.Mailer, otp_app: :helf
-  end
-
-  defdelegate new(),
-    to: Email,
-    as: :new_email
-
+  @doc """
+  Sets the email sender.
+  """
+  @spec from(Email.t, sender :: String.t) :: Email.t
   defdelegate from(email, sender),
     to: Email
 
+  @doc """
+  Sets the email recipient.
+  """
+  @spec to(Email.t, receiver :: String.t) :: Email.t
   defdelegate to(email, receiver),
     to: Email
 
+  @doc """
+  Sets the email subject.
+  """
+  @spec subject(Email.t, subject :: String.t) :: Email.t
   defdelegate subject(email, subject),
     to: Email
 
-  defdelegate text(email, sender),
+  @doc """
+  Sets the text body of the `email`.
+  """
+  @spec text(Email.t, text :: String.t) :: Email.t
+  defdelegate text(email, text),
     to: Email,
     as: :text_body
 
-  defdelegate html(email, sender),
+  @doc """
+  Sets the html body of the `email`.
+  """
+  @spec html(Email.t, html :: String.t) :: Email.t
+  defdelegate html(email, html),
     to: Email,
     as: :html_body
 
-  def send(params = [_|_]),
-    do: HELF.Mailer.send(params, @mailers)
-  def send(email = %Email{}),
-    do: HELF.Mailer.send(email, @mailers)
-
-  def send(params = [_|_], mailers) do
-    sender = Keyword.get(params, :from, @default_sender)
-    receiver = Keyword.fetch!(params, :to)
-    subject = Keyword.fetch!(params, :subject)
-    html = Keyword.fetch!(params, :html)
-    text = Keyword.get(params, :text)
-
+  @doc """
+  Creates a new email, optionally accepts a `Keyword` that is used for composing the email.
+  """
+  @spec new() :: Email.t
+  @spec new(params) :: Email.t
+  def new() do
+    Email.new_email()
+    |> from(@default_sender)
+  end
+  def new(parameters=[_|_]) do
     new()
-    |> from(sender)
-    |> to(receiver)
-    |> subject(subject)
-    |> html(html)
-    |> text(text)
-    |> HELF.Mailer.send(mailers)
+    |> compose(parameters)
+  end
+
+  @doc """
+  Sends the `email` using `mailers`.
+  """
+  @spec send(Email.t) :: {:ok, t} | :error
+  @spec send(Email.t, mailers :: [atom]) :: {:ok, t} | :error
+  def send(email = %Email{}) do
+    send(email, @mailers)
   end
   def send(email = %Email{}, mailers) do
     Enum.reduce_while(mailers, :error, fn mailer, _ ->
       try do
         mailer.deliver_now(email)
-        {:halt, {:ok, {email, mailer}}}
+        {:halt, {:ok, %__MODULE__{email: email, mailer: mailer}}}
       rescue
         Bamboo.NilRecipientsError -> {:halt, :error}
+        Bamboo.EmptyFromAddressError -> {:halt, :error}
         Bamboo.MailgunAdapter.ApiError -> {:cont, :error}
         Bamboo.MandrillAdapter.ApiError -> {:cont, :error}
         Bamboo.SendgridAdapter.ApiError -> {:cont, :error}
@@ -76,5 +95,38 @@ defmodule HELF.Mailer do
         Bamboo.SentEmail.NoDeliveriesError -> {:cont, :error}
       end
     end)
+  end
+
+  @docp """
+  Composes the email using a `Keyword` list.
+  """
+  @spec compose(Email.t, params) :: Email.t
+  defp compose(email, [{:from, val}| t]) do
+    email
+    |> from(val)
+    |> compose(t)
+  end
+  defp compose(email, [{:to, val}| t]) do
+    email
+    |> to(val)
+    |> compose(t)
+  end
+  defp compose(email, [{:subject, val}| t]) do
+    email
+    |> subject(val)
+    |> compose(t)
+  end
+  defp compose(email, [{:text, val}| t]) do
+    email
+    |> text(val)
+    |> compose(t)
+  end
+  defp compose(email, [{:html, val}| t]) do
+    email
+    |> html(val)
+    |> compose(t)
+  end
+  defp compose(email, []) do
+    email
   end
 end

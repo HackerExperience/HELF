@@ -6,10 +6,10 @@ config :logger,
 
 config :helf,
   router_port: 8080,
-  mailers: [HELF.Mailer.TestMailer],
+  mailers: [HELF.MailerTest.TestMailer],
   default_sender: "sender@config.com"
 
-config :helf, HELF.Mailer.TestMailer,
+config :helf, HELF.MailerTest.TestMailer,
   adapter: Bamboo.TestAdapter
 
 if Mix.env === :dev do
