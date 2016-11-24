@@ -1,18 +1,14 @@
 defmodule HELF.Mailer do
   @moduledoc """
-
+  Provides methods for sending emails using a list of fallback mailers.
+  Before start using the module, add a `mailers` field to your `helf` app configuration, it must be a list of
+  Bamboo mailers.
   """
 
   alias Bamboo.Email
   import Kernel, except: [send: 2]
 
-  @mailers Application.get_env(:helf, :mailers, [])
-  @default_sender Application.get_env(:helf, :default_sender, nil)
-
-  @enforce_keys [:email, :mailer]
-  defstruct [:email, :mailer]
-
-  @opaque t :: %__MODULE__{}
+  @opaque email :: email
   @type params :: [
     {:from, String.t}
     | {:to, String.t}
@@ -21,70 +17,85 @@ defmodule HELF.Mailer do
     | {:html, String.t}
   ]
 
+  defmodule EmailSent do
+    @enforce_keys [:email, :mailer]
+    defstruct [:email, :mailer]
+    @opaque t :: %__MODULE__{}
+  end
+
+  @spec from(email, sender :: String.t) :: email
   @doc """
   Sets the email sender.
   """
-  @spec from(Email.t, sender :: String.t) :: Email.t
   defdelegate from(email, sender),
     to: Email
 
+  @spec to(email, receiver :: String.t) :: email
   @doc """
   Sets the email recipient.
   """
-  @spec to(Email.t, receiver :: String.t) :: Email.t
   defdelegate to(email, receiver),
     to: Email
 
+  @spec subject(email, subject :: String.t) :: email
   @doc """
   Sets the email subject.
   """
-  @spec subject(Email.t, subject :: String.t) :: Email.t
   defdelegate subject(email, subject),
     to: Email
 
+  @spec text(email, text :: String.t) :: email
   @doc """
   Sets the text body of the `email`.
   """
-  @spec text(Email.t, text :: String.t) :: Email.t
   defdelegate text(email, text),
     to: Email,
     as: :text_body
 
+  @spec html(email, html :: String.t) :: email
   @doc """
   Sets the html body of the `email`.
   """
-  @spec html(Email.t, html :: String.t) :: Email.t
   defdelegate html(email, html),
     to: Email,
     as: :html_body
 
+  @spec new() :: email
   @doc """
-  Creates a new email, optionally accepts a `Keyword` that is used for composing the email.
+  Creates a new empty email.
   """
-  @spec new() :: Email.t
-  @spec new(params) :: Email.t
-  def new() do
+  def new do
     Email.new_email()
-    |> from(@default_sender)
+    |> from(Application.get_env(:helf, :default_sender))
   end
-  def new(parameters=[_|_]) do
+
+  @spec new(params) :: email
+  @doc """
+  Creates a new email filled with data from `params`.
+  """
+  def new(parameters = [_|_]) do
     new()
     |> compose(parameters)
   end
 
+  @spec send(email) :: {:ok, EmailSent.t} | :error
   @doc """
-  Sends the `email` using `mailers`.
+  Sends the `email` using configured mailers.
   """
-  @spec send(Email.t) :: {:ok, t} | :error
-  @spec send(Email.t, mailers :: [atom]) :: {:ok, t} | :error
   def send(email = %Email{}) do
-    send(email, @mailers)
+    mailers = Application.fetch_env!(:helf, :mailers)
+    send(email, mailers)
   end
+
+  @spec send(email, mailers :: [atom]) :: {:ok, EmailSent.t} | :error
+  @doc """
+  Sends the `email` without using the mailer list from config, uses mailers from the params instead.
+  """
   def send(email = %Email{}, mailers) do
     Enum.reduce_while(mailers, :error, fn mailer, _ ->
       try do
         mailer.deliver_now(email)
-        {:halt, {:ok, %__MODULE__{email: email, mailer: mailer}}}
+        {:halt, {:ok, %EmailSent{email: email, mailer: mailer}}}
       rescue
         Bamboo.MailgunAdapter.ApiError -> {:cont, :error}
         Bamboo.MandrillAdapter.ApiError -> {:cont, :error}
@@ -95,17 +106,23 @@ defmodule HELF.Mailer do
     end)
   end
 
+  @spec send_later(email) :: Task.t
   @doc """
-  Sends the `email` from another processs, remember to start the supervisor first.
+  Sends the `email` from another processs using configured mailers.
   """
-  @spec send_later(Email.t) :: Task.t
-  @spec send_later(Email.t, mailers :: [atom]) :: Task.t
   def send_later(email) do
-    send_later(email, @mailers)
+    mailers = Application.fetch_env!(:helf, :mailers)
+    send_later(email, mailers)
   end
+
+  @spec send_later(email, mailers :: [atom]) :: Task.t
+  @doc """
+  Sends the `email` from another processs without using the mailer list from
+  config, uses mailers from the params instead.
+  """
   def send_later(email, mailers) do
     origin = self()
-    Task.Supervisor.async_nolink supervisor_name, fn ->
+    Task.start fn ->
       case send(email, mailers) do
         {:ok, email} ->
           # forward email delivery messages for testing
@@ -120,26 +137,10 @@ defmodule HELF.Mailer do
     end
   end
 
-  @doc """
-  Starts Task supervisor.
-  """
-  @spec start_task_supervisor() :: Supervisor.on_start
-  def start_task_supervisor do
-    Task.Supervisor.start_link(name: supervisor_name)
-  end
-
-  @docp """
-  Yields task supervisor name.
-  """
-  @spec supervisor_name() :: atom
-  defp supervisor_name do
-    HELF.Mailer.TaskSupervisor
-  end
-
+  @spec compose(email, params) :: email
   @docp """
   Composes the email using a `Keyword` list.
   """
-  @spec compose(Email.t, params) :: Email.t
   defp compose(email, [{:from, val}| t]) do
     email
     |> from(val)

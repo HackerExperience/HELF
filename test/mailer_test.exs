@@ -27,11 +27,6 @@ defmodule HELF.MailerTest do
   @text "Example Text"
   @html "<p>Example HTML</p>"
 
-  setup_all do
-    Mailer.start_task_supervisor()
-    :ok
-  end
-
   describe "test mailers" do
     setup do
       email =
@@ -43,45 +38,16 @@ defmodule HELF.MailerTest do
       {:ok, email: email}
     end
 
-    test "RaiseMailer always crash even with valid input", %{email: email} do
+    test "RaiseMailer always fails", %{email: email} do
       for _ <- 1..100 do
         assert :error == Mailer.send(email, [RaiseMailer])
         refute_delivered_email email
       end
     end
 
-    test "RaiseMailer always crash with send_later", %{email: email} do
+    test "Mailer will fallback to the next mailer on the list", %{email: email} do
       for _ <- 1..100 do
-        assert :error == Mailer.send_later(email, [RaiseMailer]) |> Task.await()
-        refute_delivered_email email
-      end
-    end
-
-    test "TestMailer always works with valid input", %{email: email} do
-      for _ <- 1..100 do
-        assert {:ok, _} = Mailer.send(email, [TestMailer])
-        assert_delivered_email email
-      end
-    end
-
-    test "TestMailer always works with send_later", %{email: email} do
-      for _ <- 1..100 do
-        assert {:ok, _} = Mailer.send_later(email, [TestMailer]) |> Task.await()
-        assert_delivered_email email
-      end
-    end
-
-    test "Mailer fallback method works", %{email: email} do
-      for _ <- 1..100 do
-        assert {:ok, response} = Mailer.send(email, [RaiseMailer, TestMailer])
-        assert response.mailer == TestMailer
-        assert_delivered_email email
-      end
-    end
-
-    test "Mailer fallback method works with send_later", %{email: email} do
-      for _ <- 1..100 do
-        assert {:ok, response} = Mailer.send_later(email, [RaiseMailer, TestMailer]) |> Task.await()
+        assert {:ok, response} = Mailer.send(email, [RaiseMailer, RaiseMailer, TestMailer])
         assert response.mailer == TestMailer
         assert_delivered_email email
       end
@@ -131,6 +97,19 @@ defmodule HELF.MailerTest do
 
        assert {:ok, _} = Mailer.send(email)
        assert_delivered_email email
+    end
+
+    test "email is sent using send_later" do
+      email =
+        Mailer.new()
+        |> Mailer.from(@sender)
+        |> Mailer.to(@receiver)
+        |> Mailer.subject(@subject)
+        |> Mailer.html(@html)
+
+      {:ok, _} = Mailer.send_later(email)
+      :timer.sleep(100)
+      assert_delivered_email email
     end
   end
 end
