@@ -99,7 +99,7 @@ defmodule HELF.MailerTest do
        assert_delivered_email email
     end
 
-    test "email is sent using send_later" do
+    test "email sent with send/1 and send_async/1 are identical" do
       email =
         Mailer.new()
         |> Mailer.from(@sender)
@@ -107,9 +107,21 @@ defmodule HELF.MailerTest do
         |> Mailer.subject(@subject)
         |> Mailer.html(@html)
 
-      {:ok, _} = Mailer.send_later(email)
-      :timer.sleep(100)
-      assert_delivered_email email
+      email_sync = Mailer.send(email)
+      email_async =
+        email
+        |> Mailer.send_async(notify: true)
+        |> Mailer.await()
+
+      assert email_async == email_sync
+
+      email_sync = Mailer.send(email, [RaiseMailer])
+      {status, _} =
+        email
+        |> Mailer.send_async([notify: true], [RaiseMailer])
+        |> Mailer.await()
+
+      assert status == email_sync
     end
   end
 end
