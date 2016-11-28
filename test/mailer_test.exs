@@ -40,16 +40,15 @@ defmodule HELF.MailerTest do
 
     test "RaiseMailer always fails", %{email: email} do
       for _ <- 1..100 do
-        assert :error == Mailer.send(email, [RaiseMailer])
-        refute_delivered_email email
+        assert {:error, ^email} = Mailer.send(email, 200, [RaiseMailer])
       end
     end
 
     test "Mailer will fallback to the next mailer on the list", %{email: email} do
       for _ <- 1..100 do
-        assert {:ok, response} = Mailer.send(email, [RaiseMailer, RaiseMailer, TestMailer])
-        assert response.mailer == TestMailer
-        assert_delivered_email email
+        {:ok, result} =
+          Mailer.send(email, 200, [RaiseMailer, RaiseMailer, TestMailer])
+        assert result.mailer == TestMailer
       end
     end
   end
@@ -57,8 +56,7 @@ defmodule HELF.MailerTest do
   describe "email sending" do
     test "write and send email without explicit composition" do
        email = Mailer.new(from: @sender, to: @receiver, subject: @subject, text: @text, html: @html)
-       assert {:ok, _} = Mailer.send(email)
-       assert_delivered_email email
+       assert {:ok, _} = Mailer.send(email, 200)
     end
 
     test "write and send email with composition" do
@@ -69,8 +67,7 @@ defmodule HELF.MailerTest do
         |> Mailer.subject(@subject)
         |> Mailer.text(@text)
         |> Mailer.html(@html)
-       assert {:ok, _} = Mailer.send(email)
-       assert_delivered_email email
+       assert {:ok, _} = Mailer.send(email, 200)
     end
   end
 
@@ -83,20 +80,19 @@ defmodule HELF.MailerTest do
         |> Mailer.html(@html)
 
       assert email.from == Application.fetch_env!(:helf, :default_sender)
-      assert {:ok, _} = Mailer.send(email)
-      assert_delivered_email email
+      assert {:ok, _} = Mailer.send(email, 200)
     end
 
-     test "email doesn't require a text body" do
-       email =
-         Mailer.new()
-         |> Mailer.from(@sender)
-         |> Mailer.to(@receiver)
-         |> Mailer.subject(@subject)
-         |> Mailer.html(@html)
+    test "email doesn't require a text body" do
+      email =
+        Mailer.new()
+        |> Mailer.from(@sender)
+        |> Mailer.to(@receiver)
+        |> Mailer.subject(@subject)
+        |> Mailer.html(@html)
 
-       assert {:ok, _} = Mailer.send(email)
-       assert_delivered_email email
+      assert {:ok, result} = Mailer.send(email, 200)
+      assert result.email == email
     end
 
     test "email sent with send/1 and send_async/1 are identical" do
@@ -107,21 +103,20 @@ defmodule HELF.MailerTest do
         |> Mailer.subject(@subject)
         |> Mailer.html(@html)
 
-      email_sync = Mailer.send(email)
+      email_sync = Mailer.send(email, 200)
       email_async =
         email
         |> Mailer.send_async(notify: true)
-        |> Mailer.await()
+        |> Mailer.yield()
 
       assert email_async == email_sync
 
-      email_sync = Mailer.send(email, [RaiseMailer])
-      {status, _} =
-        email
-        |> Mailer.send_async([notify: true], [RaiseMailer])
-        |> Mailer.await()
-
-      assert status == email_sync
+      email_sync = Mailer.send(email, 200, [RaiseMailer])
+      email_async =
+         email
+         |> Mailer.send_async([notify: true], [RaiseMailer])
+         |> Mailer.yield(200)
+      assert email_sync == email_sync
     end
   end
 end
