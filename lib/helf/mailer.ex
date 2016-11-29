@@ -90,8 +90,8 @@ defmodule HELF.Mailer do
   def new do
     new(from: @default_sender)
   end
-  @spec new(params) :: email
 
+  @spec new(params) :: email
   @doc """
   Creates and composes a new email with keywords.
   """
@@ -119,9 +119,7 @@ defmodule HELF.Mailer do
   @doc """
   Sends the `email` from another processs using a explicit mailers list.
   """
-  def send_async(email = %Bamboo.Email{}, params, mailers)
-  when mailers != nil and mailers != []
-  do
+  def send_async(email = %Bamboo.Email{}, params, mailers) do
     me = self()
     ref = make_ref()
     notify? = Keyword.get(params, :notify, false)
@@ -143,10 +141,8 @@ defmodule HELF.Mailer do
   end
 
   @spec await(AsyncEmail.t, timeout :: non_neg_integer) ::
-    nil
-    | {:ok, Email.t}
+    {:ok, Email.t}
     | {:error, email}
-    | :error
   @doc """
   Awaits until email is sent, will raise `RuntimeError` on timeout.
   """
@@ -163,46 +159,38 @@ defmodule HELF.Mailer do
     nil
     | {:ok, SentEmail.t}
     | {:error, email}
-    | :error
   @doc """
   Awaits until email is sent, yields `:error` on timeout.
   """
   def yield(%AsyncEmail{notify?: true, reference: ref}, timeout \\ 5_000) do
     case wait_message(ref, timeout) do
       :timeout ->
-        :error
+        nil
       return ->
         return
     end
   end
 
-  @spec send(email) :: {:ok, AsyncEmail.t} | :error
+  @spec send(email) :: {:ok, AsyncEmail.t} | {:error, email}
   @doc """
   Sends the `email` using mailers from the config.
   """
   def send(email = %Bamboo.Email{}),
-    do: send_async(email, notify: true) |> yield()
+    do: send_async(email, notify: true) |> await()
 
-  @spec send(email, timeout :: non_neg_integer) :: {:ok, SentEmail.t} | :error
-  @doc """
-  Sends the `email` using mailers from the config, optionally accepts a timeout.
-  """
-  def send(email = %Bamboo.Email{}, timeout),
-    do: send_async(email, notify: true) |> yield(timeout)
-
-  @spec send(email, mailers :: [module, ...], timeout) ::
+  @spec send(email, mailers :: [module, ...]) ::
     {:ok, SentEmail.t}
-    | :error
+    | {:error, email}
   @doc """
   Sends the `email` using a explicit mailers list from the last param,
   also accepts a timeout.
   """
-  def send(email = %Bamboo.Email{}, timeout, mailers),
-    do: send_async(email, [notify: true], mailers) |> yield(timeout)
+  def send(email = %Bamboo.Email{}, mailers),
+    do: send_async(email, [notify: true], mailers) |> await()
 
   @spec do_send(email :: Bamboo.Email.t, mailers :: [:module, ...]) ::
     {:ok, SentEmail.t}
-    | :error
+    | {:error, email}
   @docp """
   Tries to send the email using the first available mailer, will fallback
   to the next mailer on error.
@@ -213,6 +201,7 @@ defmodule HELF.Mailer do
         mailer.deliver_now(email)
         {:halt, {:ok, %SentEmail{email: email, mailer: mailer}}}
       rescue
+        Bamboo.NilRecipientsError -> {:halt, :error}
         Bamboo.MailgunAdapter.ApiError -> {:cont, :error}
         Bamboo.MandrillAdapter.ApiError -> {:cont, :error}
         Bamboo.SendgridAdapter.ApiError -> {:cont, :error}
@@ -223,9 +212,9 @@ defmodule HELF.Mailer do
   end
 
   @spec wait_message(SentEmail.t, timeout :: non_neg_integer) ::
-    nil
-    | {:ok, EmailSent.t}
-    | :error
+    {:ok, EmailSent.t}
+    | {:error, email}
+    | :timeout
   @docp """
   Blocks until email is sent or timeout is reached.
   """

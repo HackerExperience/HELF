@@ -21,102 +21,130 @@ defmodule HELF.MailerTest do
     use Bamboo.Mailer, otp_app: :helf
   end
 
-  @sender "example <example@email.com>"
-  @receiver "example <example@email.com>"
-  @subject "Example Subject"
-  @text "Example Text"
-  @html "<p>Example HTML</p>"
+  @alphabet ?a..?z
+
+  def random_string(len),
+    do: random_numlist([], len) |> List.to_string()
+
+  def random_numlist(xs, 0),
+    do: xs
+  def random_numlist(xs, len),
+    do: [Enum.random(@alphabet) | xs] |> random_numlist(len - 1)
+
+  def random_email(),
+    do: random_string(15) <> "@" <> random_string(5) <> ".com"
+
+  def random_text(),
+    do: random_string(20)
+
+  def random_html(),
+    do: "<p>" <> random_text() <> "</p>"
 
   describe "test mailers" do
     setup do
       email =
         Mailer.new()
-        |> Mailer.to(@receiver)
-        |> Mailer.subject(@subject)
-        |> Mailer.html(@html)
+        |> Mailer.to(random_email())
+        |> Mailer.subject(random_text())
+        |> Mailer.html(random_html())
 
       {:ok, email: email}
     end
 
     test "RaiseMailer always fails", %{email: email} do
       for _ <- 1..100 do
-        assert {:error, ^email} = Mailer.send(email, 200, [RaiseMailer])
+        assert {:error, ^email} = Mailer.send(email, [RaiseMailer])
       end
     end
 
     test "Mailer will fallback to the next mailer on the list", %{email: email} do
       for _ <- 1..100 do
         {:ok, result} =
-          Mailer.send(email, 200, [RaiseMailer, RaiseMailer, TestMailer])
-        assert result.mailer == TestMailer
+          Mailer.send(email, [RaiseMailer, RaiseMailer, TestMailer])
+        assert TestMailer == result.mailer
       end
     end
-  end
 
-  describe "email sending" do
     test "write and send email without explicit composition" do
-       email = Mailer.new(from: @sender, to: @receiver, subject: @subject, text: @text, html: @html)
-       assert {:ok, _} = Mailer.send(email, 200)
+      params = [
+        from: random_email(),
+        to: random_email(),
+        subject: random_text(),
+        text: random_text(),
+        html: random_html()
+      ]
+      email = Mailer.new(params)
+      assert {:ok, _} = Mailer.send(email)
     end
 
     test "write and send email with composition" do
-       email =
+      email =
         Mailer.new()
-        |> Mailer.from(@sender)
-        |> Mailer.to(@receiver)
-        |> Mailer.subject(@subject)
-        |> Mailer.text(@text)
-        |> Mailer.html(@html)
-       assert {:ok, _} = Mailer.send(email, 200)
+        |> Mailer.from(random_email())
+        |> Mailer.to(random_email())
+        |> Mailer.subject(random_text())
+        |> Mailer.text(random_text())
+        |> Mailer.html(random_html())
+      assert {:ok, _} = Mailer.send(email)
     end
   end
 
   describe "email sending" do
     test "Mailer uses the configured default sender when the from field is not set" do
-       email =
+      email =
         Mailer.new()
-        |> Mailer.to(@receiver)
-        |> Mailer.subject(@subject)
-        |> Mailer.html(@html)
+        |> Mailer.to(random_email())
+        |> Mailer.subject(random_text())
+        |> Mailer.html(random_html())
 
       assert email.from == Application.fetch_env!(:helf, :default_sender)
-      assert {:ok, _} = Mailer.send(email, 200)
+      assert {:ok, _} = Mailer.send(email)
+    end
+
+    test "email requires a receiver" do
+      email =
+        Mailer.new()
+        |> Mailer.from(random_email())
+        |> Mailer.subject(random_text())
+        |> Mailer.html(random_html())
+
+      assert {:error, _} = Mailer.send(email)
     end
 
     test "email doesn't require a text body" do
       email =
         Mailer.new()
-        |> Mailer.from(@sender)
-        |> Mailer.to(@receiver)
-        |> Mailer.subject(@subject)
-        |> Mailer.html(@html)
+        |> Mailer.from(random_email())
+        |> Mailer.to(random_email())
+        |> Mailer.subject(random_text())
+        |> Mailer.html(random_html())
 
-      assert {:ok, result} = Mailer.send(email, 200)
-      assert result.email == email
+      assert {:ok, result} = Mailer.send(email)
+      assert email == result.email
     end
 
     test "email sent with send/1 and send_async/1 are identical" do
       email =
         Mailer.new()
-        |> Mailer.from(@sender)
-        |> Mailer.to(@receiver)
-        |> Mailer.subject(@subject)
-        |> Mailer.html(@html)
+        |> Mailer.from(random_email())
+        |> Mailer.to(random_email())
+        |> Mailer.subject(random_text())
+        |> Mailer.html(random_html())
 
-      email_sync = Mailer.send(email, 200)
+      email_sync = Mailer.send(email)
       email_async =
         email
         |> Mailer.send_async(notify: true)
-        |> Mailer.yield()
+        |> Mailer.await()
 
       assert email_async == email_sync
 
-      email_sync = Mailer.send(email, 200, [RaiseMailer])
+      email_sync = Mailer.send(email, [RaiseMailer])
       email_async =
-         email
-         |> Mailer.send_async([notify: true], [RaiseMailer])
-         |> Mailer.yield(200)
-      assert email_sync == email_sync
+        email
+        |> Mailer.send_async([notify: true], [RaiseMailer])
+        |> Mailer.await()
+      assert email_async == email_sync
     end
   end
 end
