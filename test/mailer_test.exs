@@ -21,32 +21,19 @@ defmodule HELF.MailerTest do
     use Bamboo.Mailer, otp_app: :helf
   end
 
-  @alphabet ?a..?z
-
-  def random_string(len),
-    do: random_numlist([], len) |> List.to_string()
-
-  def random_numlist(xs, 0),
-    do: xs
-  def random_numlist(xs, len),
-    do: [Enum.random(@alphabet) | xs] |> random_numlist(len - 1)
-
-  def random_email(),
-    do: random_string(15) <> "@" <> random_string(5) <> ".com"
-
-  def random_text(),
-    do: random_string(20)
-
-  def random_html(),
-    do: "<p>" <> random_text() <> "</p>"
+  @receiver "sender <sender@email.com>"
+  @sender "receiver <receiver@email.com>"
+  @subject "Email Title"
+  @html "<p>email html</p>"
+  @text "email text"
 
   describe "test mailers" do
     setup do
       email =
         Mailer.new()
-        |> Mailer.to(random_email())
-        |> Mailer.subject(random_text())
-        |> Mailer.html(random_html())
+        |> Mailer.to(@receiver)
+        |> Mailer.to(@subject)
+        |> Mailer.html(@html)
 
       {:ok, email: email}
     end
@@ -67,11 +54,11 @@ defmodule HELF.MailerTest do
 
     test "write and send email without explicit composition" do
       params = [
-        from: random_email(),
-        to: random_email(),
-        subject: random_text(),
-        text: random_text(),
-        html: random_html()
+        from: @sender,
+        to: @receiver,
+        subject: @subject,
+        text: @text(),
+        html: @html()
       ]
       email = Mailer.new(params)
       assert {:ok, _} = Mailer.send(email)
@@ -80,11 +67,11 @@ defmodule HELF.MailerTest do
     test "write and send email with composition" do
       email =
         Mailer.new()
-        |> Mailer.from(random_email())
-        |> Mailer.to(random_email())
-        |> Mailer.subject(random_text())
-        |> Mailer.text(random_text())
-        |> Mailer.html(random_html())
+        |> Mailer.from(@sender)
+        |> Mailer.to(@receiver)
+        |> Mailer.to(@subject)
+        |> Mailer.text(@text)
+        |> Mailer.html(@html)
       assert {:ok, _} = Mailer.send(email)
     end
   end
@@ -93,9 +80,9 @@ defmodule HELF.MailerTest do
     test "Mailer uses the configured default sender when the from field is not set" do
       email =
         Mailer.new()
-        |> Mailer.to(random_email())
-        |> Mailer.subject(random_text())
-        |> Mailer.html(random_html())
+        |> Mailer.to(@receiver)
+        |> Mailer.to(@subject)
+        |> Mailer.html(@html)
 
       assert email.from == Application.fetch_env!(:helf, :default_sender)
       assert {:ok, _} = Mailer.send(email)
@@ -104,9 +91,8 @@ defmodule HELF.MailerTest do
     test "email requires a receiver" do
       email =
         Mailer.new()
-        |> Mailer.from(random_email())
-        |> Mailer.subject(random_text())
-        |> Mailer.html(random_html())
+        |> Mailer.from(@sender)
+        |> Mailer.html(@html)
 
       assert {:error, _} = Mailer.send(email)
     end
@@ -114,10 +100,10 @@ defmodule HELF.MailerTest do
     test "email doesn't require a text body" do
       email =
         Mailer.new()
-        |> Mailer.from(random_email())
-        |> Mailer.to(random_email())
-        |> Mailer.subject(random_text())
-        |> Mailer.html(random_html())
+        |> Mailer.from(@sender)
+        |> Mailer.to(@receiver)
+        |> Mailer.to(@subject)
+        |> Mailer.html(@html)
 
       assert {:ok, result} = Mailer.send(email)
       assert email == result.email
@@ -126,10 +112,10 @@ defmodule HELF.MailerTest do
     test "email sent with send/1 and send_async/1 are identical" do
       email =
         Mailer.new()
-        |> Mailer.from(random_email())
-        |> Mailer.to(random_email())
-        |> Mailer.subject(random_text())
-        |> Mailer.html(random_html())
+        |> Mailer.from(@sender)
+        |> Mailer.to(@receiver)
+        |> Mailer.to(@subject)
+        |> Mailer.html(@html)
 
       email_sync = Mailer.send(email)
       email_async =

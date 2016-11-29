@@ -171,13 +171,6 @@ defmodule HELF.Mailer do
     end
   end
 
-  @spec send(email) :: {:ok, AsyncEmail.t} | {:error, email}
-  @doc """
-  Sends the `email` using mailers from the config.
-  """
-  def send(email = %Bamboo.Email{}),
-    do: send_async(email, notify: true) |> await()
-
   @spec send(email, mailers :: [module, ...]) ::
     {:ok, SentEmail.t}
     | {:error, email}
@@ -185,8 +178,18 @@ defmodule HELF.Mailer do
   Sends the `email` using a explicit mailers list from the last param,
   also accepts a timeout.
   """
-  def send(email = %Bamboo.Email{}, mailers),
-    do: send_async(email, [notify: true], mailers) |> await()
+  def send(email = %Bamboo.Email{}, mailers \\ @mailers) do
+    request = send_async(email, [notify: true], mailers)
+    pid = request.process
+    ref = Process.monitor(pid)
+    receive do
+      {:DOWN, ^ref, :process, ^pid, _} ->
+        case wait_message(request.reference, 0) do
+          :timeout -> {:error, :internal_error}
+          msg -> msg
+        end
+    end
+  end
 
   @spec do_send(email :: Bamboo.Email.t, mailers :: [:module, ...]) ::
     {:ok, SentEmail.t}
