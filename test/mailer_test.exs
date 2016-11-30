@@ -32,7 +32,7 @@ defmodule HELF.MailerTest do
       email =
         Mailer.new()
         |> Mailer.to(@receiver)
-        |> Mailer.to(@subject)
+        |> Mailer.subject(@subject)
         |> Mailer.html(@html)
 
       {:ok, email: email}
@@ -69,7 +69,7 @@ defmodule HELF.MailerTest do
         Mailer.new()
         |> Mailer.from(@sender)
         |> Mailer.to(@receiver)
-        |> Mailer.to(@subject)
+        |> Mailer.subject(@subject)
         |> Mailer.text(@text)
         |> Mailer.html(@html)
       assert {:ok, _} = Mailer.send(email)
@@ -81,7 +81,7 @@ defmodule HELF.MailerTest do
       email =
         Mailer.new()
         |> Mailer.to(@receiver)
-        |> Mailer.to(@subject)
+        |> Mailer.subject(@subject)
         |> Mailer.html(@html)
 
       assert email.from == Application.fetch_env!(:helf, :default_sender)
@@ -102,7 +102,7 @@ defmodule HELF.MailerTest do
         Mailer.new()
         |> Mailer.from(@sender)
         |> Mailer.to(@receiver)
-        |> Mailer.to(@subject)
+        |> Mailer.subject(@subject)
         |> Mailer.html(@html)
 
       assert {:ok, result} = Mailer.send(email)
@@ -114,7 +114,7 @@ defmodule HELF.MailerTest do
         Mailer.new()
         |> Mailer.from(@sender)
         |> Mailer.to(@receiver)
-        |> Mailer.to(@subject)
+        |> Mailer.subject(@subject)
         |> Mailer.html(@html)
 
       email_sync = Mailer.send(email)
