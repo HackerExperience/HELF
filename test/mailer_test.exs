@@ -39,17 +39,13 @@ defmodule HELF.MailerTest do
     end
 
     test "RaiseMailer always fails", %{email: email} do
-      for _ <- 1..100 do
-        assert {:error, ^email} = Mailer.send(email, [RaiseMailer])
-      end
+      assert {:error, ^email} = Mailer.send(email, [RaiseMailer])
     end
 
     test "Mailer will fallback to the next mailer on the list", %{email: email} do
-      for _ <- 1..100 do
-        {:ok, result} =
-          Mailer.send(email, [RaiseMailer, RaiseMailer, TestMailer])
-        assert TestMailer == result.mailer
-      end
+      {:ok, result} =
+        Mailer.send(email, [RaiseMailer, RaiseMailer, TestMailer])
+      assert TestMailer == result.mailer
     end
 
     test "write and send email without explicit composition" do
