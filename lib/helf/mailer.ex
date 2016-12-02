@@ -5,12 +5,15 @@ defmodule HELF.Mailer do
   It will try to use the first mailer available for sending the email, and
   fallback to the next available mailer one if the current one fails.
 
-  Before start using the module, add a `mailers` field to your `helf` app
-  configuration, it must be a list of Bamboo mailers.
+  Before using the module, configure the add a list of mailers bamboo mailers
+  to your `helf` configuration, it should looks like:
+
+      config :helf,
+        mailers: [HELM.Mailer.MailGun, HELM.Mailer.Maldrill],
+        default_sender: "sender@config.com"
   """
 
-  @type params :: [{:notify, boolean}]
-  @type compose_params :: [
+  @type params :: [
     {:from, String.t}
     | {:to, String.t}
     | {:subject, String.t}
@@ -85,7 +88,7 @@ defmodule HELF.Mailer do
 
   @spec new() :: email
   @doc """
-  Creates a new empty email, see new/1 for composing emails with keywords.
+  Creates a new empty email, see new/1 for composing emails using the params.
   """
   def new do
     new(from: @default_sender)
@@ -93,36 +96,27 @@ defmodule HELF.Mailer do
 
   @spec new(params) :: email
   @doc """
-  Creates and composes a new email with keywords.
+  Creates and composes a new email using the params.
   """
   def new(parameters = [_|_]) do
     Bamboo.Email.new_email()
     |> compose(parameters)
   end
 
-  @spec send_async(email) :: AsyncEmail.t
+  @spec send_async(
+    email,
+    params :: [{:notify, boolean} | {:mailers, [module, ...]}]) :: AsyncEmail.t
   @doc """
-  Sends the `email` from another processs using configured mailers.
-  """
-  def send_async(email = %Bamboo.Email{}),
-    do: send_async(email, [], @mailers)
+  Sends the `email` from another processs, optionally accepts `notify` and
+  `mailers` keywords.
 
-  @spec send_async(email, params) :: AsyncEmail.t
-  @doc """
-  Sends the `email` from another processs using configured mailers, also
-  accepts a `notify` param that allows waiting with `await` or `yield`.
+  To use `await` and `yield` methods, set the `notify` keyword to true.
   """
-  def send_async(email = %Bamboo.Email{}, params),
-    do: send_async(email, params, @mailers)
-
-  @spec send_async(email, params, mailers :: [module, ...]) :: AsyncEmail.t
-  @doc """
-  Sends the `email` from another processs using a explicit mailers list.
-  """
-  def send_async(email = %Bamboo.Email{}, params, mailers) do
+  def send_async(email, params \\ []) do
     me = self()
     ref = make_ref()
     notify? = Keyword.get(params, :notify, false)
+    mailers = Keyword.get(params, :mailers, @mailers)
 
     process = spawn fn ->
       status = do_send(email, mailers)
@@ -156,11 +150,11 @@ defmodule HELF.Mailer do
   end
 
   @spec yield(AsyncEmail.t, timeout :: non_neg_integer) ::
-    nil
-    | {:ok, SentEmail.t}
+    {:ok, SentEmail.t}
     | {:error, email}
+    | nil
   @doc """
-  Awaits until email is sent, yields `:error` on timeout.
+  Awaits until email is sent, yields `nil` on timeout.
   """
   def yield(%AsyncEmail{notify?: true, reference: ref}, timeout \\ 5_000) do
     case wait_message(ref, timeout) do
@@ -171,15 +165,14 @@ defmodule HELF.Mailer do
     end
   end
 
-  @spec send(email, mailers :: [module, ...]) ::
+  @spec send(email, params :: [{:mailers, [module, ...]}]) ::
     {:ok, SentEmail.t}
     | {:error, email}
   @doc """
-  Sends the `email` using a explicit mailers list from the last param,
-  also accepts a timeout.
+  Sends the `email`, optionally accepts a `mailers` keyword.
   """
-  def send(email = %Bamboo.Email{}, mailers \\ @mailers) do
-    request = send_async(email, [notify: true], mailers)
+  def send(email = %Bamboo.Email{}, params \\ []) do
+    request = send_async(email, [{:notify, true} | params])
     pid = request.process
     ref = Process.monitor(pid)
     receive do
@@ -191,11 +184,11 @@ defmodule HELF.Mailer do
     end
   end
 
-  @spec do_send(email :: Bamboo.Email.t, mailers :: [:module, ...]) ::
+  @spec do_send(email :: Bamboo.Email.t, mailers :: [module, ...]) ::
     {:ok, SentEmail.t}
-    | {:error, email}
+    | :error
   @docp """
-  Tries to send the email using the first available mailer, will fallback
+  Tries to send the email using the first available mailer, then fallbacks
   to the next mailer on error.
   """
   defp do_send(email, mailers) do

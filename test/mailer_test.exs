@@ -39,12 +39,12 @@ defmodule HELF.MailerTest do
     end
 
     test "RaiseMailer always fails", %{email: email} do
-      assert {:error, ^email} = Mailer.send(email, [RaiseMailer])
+      assert {:error, ^email} = Mailer.send(email, mailers: [RaiseMailer])
     end
 
     test "Mailer will fallback to the next mailer on the list", %{email: email} do
       {:ok, result} =
-        Mailer.send(email, [RaiseMailer, RaiseMailer, TestMailer])
+        Mailer.send(email, mailers: [RaiseMailer, RaiseMailer, TestMailer])
       assert TestMailer == result.mailer
     end
 
@@ -80,7 +80,7 @@ defmodule HELF.MailerTest do
         |> Mailer.subject(@subject)
         |> Mailer.html(@html)
 
-      assert email.from == Application.fetch_env!(:helf, :default_sender)
+      assert Application.fetch_env!(:helf, :default_sender) == email.from
       assert {:ok, _} = Mailer.send(email)
     end
 
@@ -121,10 +121,10 @@ defmodule HELF.MailerTest do
 
       assert email_async == email_sync
 
-      email_sync = Mailer.send(email, [RaiseMailer])
+      email_sync = Mailer.send(email, mailers: [RaiseMailer])
       email_async =
         email
-        |> Mailer.send_async([notify: true], [RaiseMailer])
+        |> Mailer.send_async(notify: true, mailers: [RaiseMailer])
         |> Mailer.await()
       assert email_async == email_sync
     end
