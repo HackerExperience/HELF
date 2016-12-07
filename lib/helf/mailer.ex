@@ -1,16 +1,18 @@
 defmodule HELF.Mailer do
   @moduledoc """
-  Provides methods for sending emails with a list of Bamboo mailers.
+  Provides a way for sending emails with a list of Bamboo mailers.
 
-  It will try to use the first mailer available for sending the email, and
-  fallback to the next available mailer one if the current one fails.
+  It will try to send the email using the first available mailer, and then
+  fallback to the next whenever the current one fails.
 
-  Before using the module, configure the add a list of mailers bamboo mailers
-  to your `helf` configuration, it should looks like:
+  Before using the module, you should configure the list of mailers, this
+  is what it should looks like:
 
-      config :helf,
+      config :helf, HELF.Mailer,
         mailers: [HELM.Mailer.MailGun, HELM.Mailer.Maldrill],
         default_sender: "sender@config.com"
+
+  The default sender is completely optional.
   """
 
   @type params :: [
@@ -22,8 +24,7 @@ defmodule HELF.Mailer do
   ]
   @opaque email :: Bamboo.Email.t
 
-  @mailers Application.get_env(:helf, :mailers)
-  @default_sender Application.get_env(:helf, :default_sender)
+  @config Application.get_env(:helf, __MODULE__, [])
 
   defmodule SentEmail do
     @moduledoc """
@@ -91,7 +92,12 @@ defmodule HELF.Mailer do
   Creates a new empty email, see new/1 for composing emails using the params.
   """
   def new do
-    new(from: @default_sender)
+    case Keyword.fetch(@config, :default_sender) do
+      {:ok, sender} ->
+        new(from: sender)
+      {:error, _} ->
+        Bamboo.Email.new_email()
+    end
   end
 
   @spec new(params) :: email
@@ -115,8 +121,9 @@ defmodule HELF.Mailer do
   def send_async(email, params \\ []) do
     me = self()
     ref = make_ref()
+    default_mailers = Keyword.get(@config, :mailers)
     notify? = Keyword.get(params, :notify, false)
-    mailers = Keyword.get(params, :mailers, @mailers)
+    mailers = Keyword.get(params, :mailers, default_mailers)
 
     process = spawn fn ->
       status = do_send(email, mailers)
