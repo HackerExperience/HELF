@@ -92,12 +92,8 @@ defmodule HELF.Mailer do
   Creates a new empty email, see new/1 for composing emails using the params.
   """
   def new do
-    case Keyword.fetch(@config, :default_sender) do
-      {:ok, sender} ->
-        new(from: sender)
-      {:error, _} ->
-        Bamboo.Email.new_email()
-    end
+    Bamboo.Email.new_email()
+    |> from(Keyword.get(@config, :default_sender))
   end
 
   @spec new(params) :: email
@@ -105,7 +101,7 @@ defmodule HELF.Mailer do
   Creates and composes a new email using the params.
   """
   def new(parameters = [_|_]) do
-    Bamboo.Email.new_email()
+    new()
     |> compose(parameters)
   end
 

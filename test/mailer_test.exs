@@ -53,14 +53,12 @@ defmodule HELF.MailerTest do
     test "emails created with and without composition are identical" do
       with_pipe =
         Mailer.new()
-        |> Mailer.from(@sender)
         |> Mailer.to(@receiver)
         |> Mailer.subject(@subject)
         |> Mailer.text(@text)
         |> Mailer.html(@html)
 
       params = [
-        from: @sender,
         to: @receiver,
         subject: @subject,
         text: @text(),
