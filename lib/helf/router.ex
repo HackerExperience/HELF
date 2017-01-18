@@ -56,5 +56,6 @@ defmodule HELF.Router do
   @doc """
   Forwards params to `Router.Topics.register`.
   """
-  def register(topic, action), do: Router.Topics.register(topic, action)
+  def register(topic, action, atoms \\ []),
+    do: Router.Topics.register(topic, action)
 end

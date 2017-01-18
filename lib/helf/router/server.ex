@@ -95,7 +95,15 @@ defmodule HELF.Router.Server do
 
   # decodes the message and forward to the topic route handler
   defp handle_message(msg) do
-    case Poison.decode(msg, as: %Request{}) do
+
+    decode = try do
+      Poison.decode(msg, as: %Request{}, keys: :atoms!)
+    rescue
+      ArgumentError ->
+        :decode_error
+    end
+
+    case decode do
       {:ok, %{topic: topic, args: args}} when not is_binary(topic) or is_nil(args) ->
         {:error, {400, "Invalid request"}}
       {:ok, %{topic: topic, args: args}} ->
