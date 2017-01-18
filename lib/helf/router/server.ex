@@ -99,7 +99,10 @@ defmodule HELF.Router.Server do
       {:ok, %{topic: topic, args: args}} when not is_binary(topic) or is_nil(args) ->
         {:error, {400, "Invalid request"}}
       {:ok, %{topic: topic, args: args}} ->
-        Topics.forward(topic, args)
+        {_, result} = Topics.forward(topic, args)
+        result
+      :decode_error ->
+        {:error, {400, "One of your arguments is invalid"}}
       _ ->
         {:error, {400, "Invalid JSON"}}
     end
