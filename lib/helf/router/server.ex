@@ -97,6 +97,7 @@ defmodule HELF.Router.Server do
   end
 
   # Make the internal response match the router's reply format
+  # TODO: Implement Viewables (or something like that; see T424)
   defp format_reply(reply) do
     case reply do
       {:ok, res} ->
@@ -107,7 +108,7 @@ defmodule HELF.Router.Server do
         {code, msg} = case error do
           :bad_request ->
             {400, "Bad request"}
-          :argument_error ->
+          :invalid_atom ->
             {400, "One of your arguments is invalid"}
           :decode_error ->
             {400, "Invalid JSON"}
@@ -131,7 +132,7 @@ defmodule HELF.Router.Server do
       Poison.decode(msg, as: %Request{}, keys: :atoms!)
     rescue
       ArgumentError ->
-        :argument_error
+        :invalid_atom
     end
 
     case decode do
@@ -139,8 +140,8 @@ defmodule HELF.Router.Server do
         {:ok, request}
       {:ok, _request} ->
         {:error, :bad_request}
-      :argument_error ->
-        {:error, :argument_error}
+      :invalid_atom ->
+        {:error, :invalid_atom}
       _ ->
         {:error, :decode_error}
     end
