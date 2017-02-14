@@ -11,9 +11,9 @@ defmodule HELF.Router.Topics do
 
   def forward(topic, args) do
     case Broker.call("router:forward", {topic, args}) do
-      {:call, {topic, message}} ->
+      {_, {:call, {topic, message}}} ->
         Broker.call(topic, message)
-      return ->
+      {_, return} ->
         return
     end
   end

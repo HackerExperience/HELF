@@ -2,15 +2,15 @@ defmodule HELF.Router do
 
   use Supervisor
 
-  require Logger
-
   alias HELF.Router
+
+  require Logger
 
   @doc """
   Starts `HELF.Router` using the default backend.
   """
   def start_link do
-    port = do_get_port
+    port = get_port()
     Supervisor.start_link(__MODULE__, [:cowboy, port])
   end
 
@@ -31,7 +31,8 @@ defmodule HELF.Router do
   @doc """
   Starts `HELF.Router` using the default backend.
   """
-  def init([:cowboy, port]), do: do_init(worker(Router.Server, [port], function: :run))
+  def init([:cowboy, port]),
+    do: do_init(worker(Router.Server, [port], function: :run))
 
   # Starts both backend and topic registering service.
   defp do_init(backend) do
@@ -43,18 +44,12 @@ defmodule HELF.Router do
     supervise(children, strategy: :one_for_one)
   end
 
-  # Tries to get the port without breaking compatibility with HELF 2
-  defp do_get_port do
-    case Application.fetch_env(:helf, :port) do
-      {:ok, port} ->
-        Logger.warn "Invalid :helf configuration, :port is deprecated, change to :router_port."
-        port
-      :error -> Application.fetch_env!(:helf, :router_port)
-    end
-  end
+  defp get_port(),
+    do: Application.fetch_env!(:helf, :router_port)
 
   @doc """
   Forwards params to `Router.Topics.register`.
   """
-  def register(topic, action), do: Router.Topics.register(topic, action)
+  def register(topic, action, _atoms \\ []),
+    do: Router.Topics.register(topic, action)
 end
