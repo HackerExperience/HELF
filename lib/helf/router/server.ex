@@ -50,16 +50,18 @@ defmodule HELF.Router.Server do
   def websocket_handle({:text, message}, req, state) do
     request = decode_message(message)
 
-    reply = case request do
+    return = case request do
       {:ok, request} ->
         {_, result} = Topics.forward(request.topic, request.args)
+
         result
         |> format_reply()
         |> add_metadata(request)
       {:error, error} ->
         format_reply({:error, error})
     end
-      |> Poison.encode!
+
+    reply = Poison.encode!(return)
 
     {:reply, {:text, reply}, req, state}
   end
@@ -133,7 +135,7 @@ defmodule HELF.Router.Server do
     end
 
     case decode do
-      {:ok, request = %{topic: topic, args: args} when is_binary(topic) and not is_nil(args)} ->
+      {:ok, request = %{topic: topic, args: args}} when is_binary(topic) and not is_nil(args) ->
         {:ok, request}
       {:ok, _request} ->
         {:error, :bad_request}
@@ -143,4 +145,8 @@ defmodule HELF.Router.Server do
         {:error, :decode_error}
     end
   end
+
+  defp default_internal_error(),
+    do: %{code: 500, data: %{}}
+
 end
