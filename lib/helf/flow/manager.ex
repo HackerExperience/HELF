@@ -5,15 +5,9 @@ defmodule HELF.Flow.Manager do
 
   @typep callback :: (() -> any)
 
-  @typep t :: %__MODULE__{
-    success: [callback],
-    fail: [callback],
-    always: [callback]
-  }
+  @typep callback_collection :: [{:success | :fail | :always, callback}]
 
   require Logger
-
-  defstruct [success: [], fail: [], always: []]
 
   @spec start() :: pid
   def start do
@@ -21,11 +15,11 @@ defmodule HELF.Flow.Manager do
 
     spawn fn ->
       Process.monitor(me)
-      loop(%__MODULE__{})
+      loop([])
     end
   end
 
-  @spec loop(t) :: no_return
+  @spec loop(callback_collection) :: no_return
   def loop(state) do
     receive do
       message ->
@@ -42,26 +36,20 @@ defmodule HELF.Flow.Manager do
     end
   end
 
-  @spec handle_cast({:callback, :sucess | :fail | :always, callback}, t) :: {:noreply, t}
-  @spec handle_cast({:DOWN, term, :process, term, term}, t) :: {:stop, t}
-  @spec handle_cast(:success | :fail, t) :: {:stop, t}
-  def handle_cast({:callback, :success, callback}, state = %{success: success}),
-    do: {:noreply, %{state| success: [callback| success]}}
-  def handle_cast({:callback, :fail, callback}, state = %{fail: fail}),
-    do: {:noreply, %{state| fail: [callback| fail]}}
-  def handle_cast({:callback, :always, callback}, state = %{always: always}),
-    do: {:noreply, %{state| always: [callback| always]}}
+  @spec handle_cast({:callback, :sucess | :fail | :always, callback}, callback_collection) :: {:noreply, callback_collection}
+  @spec handle_cast({:DOWN, term, :process, term, term}, callback_collection) :: {:stop, callback_collection}
+  @spec handle_cast(:success | :fail, callback_collection) :: {:stop, callback_collection}
+  def handle_cast({:callback, kind, callback}, state) when kind in [:success, :fail, :always],
+    do: {:noreply, [{kind, callback}| state]}
   def handle_cast({:DOWN, _, :process, _, _}, state),
     do: handle_cast(:fail, state)
   def handle_cast(:success, state) do
-    spawn(fn -> execute_callbacks(:lists.reverse(state.success)) end)
-    spawn(fn -> execute_callbacks(:lists.reverse(state.always)) end)
+    spawn(fn -> execute_callbacks(:lists.reverse(state), [:success, :always]) end)
 
     {:stop, state}
   end
   def handle_cast(:fail, state) do
-    spawn(fn -> execute_callbacks(:lists.reverse(state.fail)) end)
-    spawn(fn -> execute_callbacks(:lists.reverse(state.always)) end)
+    spawn(fn -> execute_callbacks(:lists.reverse(state), [:fail, :always]) end)
 
     {:stop, state}
   end
@@ -71,14 +59,19 @@ defmodule HELF.Flow.Manager do
     raise "FLOW MANAGER RECEIVED UNEXPECTED MESSAGE: #{inspect msg}"
   end
 
-  @spec execute_callbacks([callback]) :: :ok
-  defp execute_callbacks(callbacks) do
-    Enum.each(callbacks, fn callback ->
+  @spec execute_callbacks([callback], [:success | :fail | :always]) :: :ok
+  defp execute_callbacks(callbacks, acceptable_kinds) do
+    Enum.each(callbacks, fn {kind, callback} ->
       try do
-        callback.()
+        # TODO: Handle potential unending loops (probably by spawning a
+        #   process for the callback and waiting a maximum timeout for it to
+        #   complete)
+        if kind in acceptable_kinds do
+          callback.()
+        end
       catch
         kind, reason ->
-          # Logs the exception as it would be if not catched
+          # Logs the exception as it would be if not caught
           Logger.error(Exception.format(kind, reason, System.stacktrace()))
       end
     end)
