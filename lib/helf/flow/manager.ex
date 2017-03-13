@@ -11,6 +11,8 @@ defmodule HELF.Flow.Manager do
     always: [callback]
   }
 
+  require Logger
+
   defstruct [success: [], fail: [], always: []]
 
   @spec start() :: pid
@@ -52,32 +54,14 @@ defmodule HELF.Flow.Manager do
   def handle_cast({:DOWN, _, :process, _, _}, state),
     do: handle_cast(:fail, state)
   def handle_cast(:success, state) do
-    spawn fn ->
-      state.success
-      |> :lists.reverse()
-      |> Enum.each(fn callback -> callback.() end)
-    end
-
-    spawn fn ->
-      state.always
-      |> :lists.reverse()
-      |> Enum.each(fn callback -> callback.() end)
-    end
+    spawn(fn -> execute_callbacks(:lists.reverse(state.success)) end)
+    spawn(fn -> execute_callbacks(:lists.reverse(state.always)) end)
 
     {:stop, state}
   end
   def handle_cast(:fail, state) do
-    spawn fn ->
-      state.fail
-      |> :lists.reverse()
-      |> Enum.each(fn callback -> callback.() end)
-    end
-
-    spawn fn ->
-      state.always
-      |> :lists.reverse()
-      |> Enum.each(fn callback -> callback.() end)
-    end
+    spawn(fn -> execute_callbacks(:lists.reverse(state.fail)) end)
+    spawn(fn -> execute_callbacks(:lists.reverse(state.always)) end)
 
     {:stop, state}
   end
@@ -85,5 +69,18 @@ defmodule HELF.Flow.Manager do
     handle_cast(:fail, state)
 
     raise "FLOW MANAGER RECEIVED UNEXPECTED MESSAGE: #{inspect msg}"
+  end
+
+  @spec execute_callbacks([callback]) :: :ok
+  defp execute_callbacks(callbacks) do
+    Enum.each(callbacks, fn callback ->
+      try do
+        callback.()
+      catch
+        kind, reason ->
+          # Logs the exception as it would be if not catched
+          Logger.error(Exception.format(kind, reason, System.stacktrace()))
+      end
+    end)
   end
 end

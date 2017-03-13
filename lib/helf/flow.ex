@@ -6,7 +6,7 @@ defmodule HELF.Flow do
         blocks = Enum.map(blocks, fn
           # If the `with` succeeds, execute the success routine
           {:do, code} ->
-            inject = quote do: (Flow.__execute_success__(); unquote(code))
+            inject = quote do: (unquote(__MODULE__).__execute_success__(); unquote(code))
 
             {:do, inject}
 
@@ -14,7 +14,7 @@ defmodule HELF.Flow do
           # error clauses it matches
           {:else, clauses} ->
             clauses = Enum.map(clauses, fn {:->, meta, [pattern, code]} ->
-              inject = quote do: (Flow.__execute_fail__(); unquote(code))
+              inject = quote do: (unquote(__MODULE__).__execute_fail__(); unquote(code))
 
               {:->, meta, [pattern, inject]}
             end)
@@ -29,7 +29,7 @@ defmodule HELF.Flow do
         # one that has the very same behaviour as the lack of any `else` clause
         # (ie: return the value) but with the addition of executing the failure
         # routine
-        on_fail = quote do: Flow.__execute_fail__()
+        on_fail = quote do: unquote(__MODULE__).__execute_fail__()
 
         # AST to bind on any potential value, execute on_fail and return the bound value
         inject = [{:->, [], [[{:error, [], Elixir}], {:__block__, [], [on_fail, {:error, [], Elixir}]}]}]
@@ -43,9 +43,9 @@ defmodule HELF.Flow do
     command = {:with, meta, args}
 
     quote do
-      Flow.__start__()
+      unquote(__MODULE__).__start__()
       return = unquote(command)
-      Flow.__finish__()
+      unquote(__MODULE__).__finish__()
 
       return
     end
