@@ -207,6 +207,70 @@ defmodule HELF.FlowTest do
     assert log =~ "FOO BAR"
   end
 
+  describe "callbacks" do
+    test "can't be set when outside flow" do
+      assert_raise RuntimeError, "cannot set callback outside of flow", fn ->
+        on_success(fn -> :foo end)
+      end
+
+      assert_raise RuntimeError, "cannot set callback outside of flow", fn ->
+        on_fail(fn -> :foo end)
+      end
+
+      assert_raise RuntimeError, "cannot set callback outside of flow", fn ->
+        on_done(fn -> :foo end)
+      end
+    end
+
+    test "can be set inside a function if called inside a flow" do
+      function = fn ->
+        me = self()
+
+        on_done(fn -> send me, :done end)
+      end
+
+      flowing do
+        with \
+          function.(),
+          {:ok, _} <- {:ok, :dokey}
+        do
+          :this_is_an_atom
+        end
+      end
+
+      assert_receive :done
+    end
+
+    test "can't be set on a different process than the one that is flowing" do
+      function = fn ->
+        me = self()
+
+        spawn fn ->
+          on_done(fn -> send me, :done end)
+        end
+      end
+
+      # The error will be raised inside the spawned process (without affecting
+      # the current flow) so we'll have to capture the log to ensure this
+      # happened. "If a tree falls in a forest and no one is around to hear it,
+      # does it make a sound?"
+      log = capture_log(fn ->
+        flowing do
+          with \
+            function.(),
+            {:ok, _} <- {:ok, :dokey}
+          do
+            :this_is_an_atom
+          end
+        end
+
+        :timer.sleep(100)
+      end)
+
+      assert log =~ "cannot set callback outside of flow"
+    end
+  end
+
   defp fetch_all_mail,
     do: fetch_all_mail([])
   defp fetch_all_mail(collection) do
