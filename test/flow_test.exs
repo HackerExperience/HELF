@@ -3,6 +3,7 @@ defmodule HELF.FlowTest do
   use ExUnit.Case, async: true
 
   import HELF.Flow
+  import ExUnit.CaptureLog
 
   describe "on_success" do
     test "is executed when a flow succeeds to the `do` clause" do
@@ -171,6 +172,39 @@ defmodule HELF.FlowTest do
 
     assert :yep == return
     assert expected == mailbox
+  end
+
+  test "when a callback raises, the error will be logged and the rest of callbacks will still run" do
+    me = self()
+
+    log = capture_log(fn ->
+      flowing do
+        with \
+          on_success(fn -> send me, {:success, 1} end),
+          on_done(fn -> send me, {:done, 1} end),
+          on_fail(fn -> send me, {:fail, 1} end),
+          {:ok, _} <- {:ok, :success},
+          on_done(fn -> raise "FOO BAR" end),
+          on_fail(fn -> send me, {:fail, 2} end),
+          on_done(fn -> send me, {:done, 2} end),
+          on_success(fn -> send me, {:success, 2} end)
+        do
+          :yep
+        end
+      end
+
+      # Here we are giving the spawned flow handler enough time to execute the
+      # callbacks so ExUnit's capture_log can... well... capture the logs...
+      :timer.sleep(100)
+    end)
+
+    expected = [success: 1, done: 1, done: 2, success: 2]
+
+    mailbox = fetch_all_mail()
+
+    # All callbacks shall be executed even if one of them raises
+    assert expected == mailbox
+    assert log =~ "FOO BAR"
   end
 
   defp fetch_all_mail,
