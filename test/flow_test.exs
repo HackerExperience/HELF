@@ -149,7 +149,7 @@ defmodule HELF.FlowTest do
     end
   end
 
-  test "executes callbacks in the order they where defined" do
+  test "executes callbacks in the order they where defined when flow succeeds" do
     me = self()
 
     return = flowing do
@@ -171,6 +171,37 @@ defmodule HELF.FlowTest do
     mailbox = fetch_all_mail()
 
     assert :yep == return
+    assert expected == mailbox
+  end
+
+  # Note that this happens because when an operation fails, there is a certain
+  # order things should be done to revert it's side-effects. Example:
+  # Suppose the operation is x = 100 |> div(2) |> sub(20)
+  # To undo that we have to execute the operations in reverse order:
+  #   x |> sum(20) |> mul(2)
+  test "executes callbacks IN REVERSE ORDER when flow fails" do
+    me = self()
+
+    return = flowing do
+      with \
+        on_success(fn -> :timer.sleep(50); send me, {:success, 1} end),
+        on_done(fn -> :timer.sleep(50); send me, {:done, 1} end),
+        on_fail(fn -> :timer.sleep(50); send me, {:fail, 1} end),
+        {:ok, _} <- {:ok, :success},
+        on_fail(fn -> :timer.sleep(50); send me, {:fail, 2} end),
+        on_done(fn -> :timer.sleep(50); send me, {:done, 2} end),
+        on_success(fn -> :timer.sleep(50); send me, {:success, 2} end),
+        {:ok, _} <- {:error, :failed}
+      do
+        :yep
+      end
+    end
+
+    expected = [done: 2, fail: 2, fail: 1, done: 1]
+
+    mailbox = fetch_all_mail()
+
+    assert {:error, :failed} == return
     assert expected == mailbox
   end
 

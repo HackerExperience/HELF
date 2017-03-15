@@ -49,7 +49,7 @@ defmodule HELF.Flow.Manager do
     {:stop, state}
   end
   def handle_cast(:fail, state) do
-    spawn(fn -> execute_callbacks(:lists.reverse(state), [:fail, :always]) end)
+    spawn(fn -> execute_callbacks(state, [:fail, :always]) end)
 
     {:stop, state}
   end
