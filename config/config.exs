@@ -13,9 +13,3 @@ config :helf, HELF.Mailer,
 
 config :helf, HELF.MailerTest.TestMailer,
   adapter: Bamboo.TestAdapter
-
-if Mix.env === :dev do
-  config :remix,
-    escript: true,
-    silent: true
-end
