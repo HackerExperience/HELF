@@ -19,7 +19,7 @@ defmodule HELF.Mixfile do
       {:cowboy,"~> 1.0"},
       {:poison, "~> 2.0"},
       {:bamboo, "~> 0.7"},
-      {:hebroker, git: "ssh://git@git.hackerexperience.com/diffusion/BROKER/HEBroker.git", ref: "v0.1"}
+      {:hebroker, github: "HackerExperience/HeBroker"}
     ]
   end
 end
