@@ -56,7 +56,7 @@ parallel (
         sh "mix deps.get"
 
         // Reuse existing plt
-        sh "cp ~/.mix/helf/*prod*.plt* _build/test || :"
+        sh "cp ~/.mix/helf/*test*.plt* _build/test || :"
 
         withEnv (['MIX_ENV=test']) {
           sh "mix dialyzer --halt-exit-status"
