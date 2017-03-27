@@ -6,12 +6,12 @@ defmodule HELF.Mixfile do
       app: :helf,
       version: "0.0.1",
       elixir: "~> 1.3",
-      deps: deps()]
+      deps: deps()
+    ]
   end
 
   def application do
-    [
-      mod: {HELF.App, []}]
+    []
   end
 
   defp deps do
