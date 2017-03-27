@@ -18,7 +18,7 @@ defmodule HELF.Mixfile do
     [
       {:cowboy,"~> 1.0"},
       {:poison, "~> 2.0"},
-      {:bamboo, "~> 0.7"},
+      {:bamboo, "~> 0.8"},
       {:hebroker, github: "HackerExperience/HeBroker"}
     ]
   end
