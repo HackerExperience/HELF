@@ -44,7 +44,7 @@ defmodule HELF.Mailer do
     Use with `HELF.Mailer.await` and `HELF.Mailer.yield`.
     """
 
-    @opaque t :: %__MODULE__{}
+    @type t :: %__MODULE__{}
 
     @enforce_keys [:notify?, :reference, :process]
     defstruct [:notify?, :reference, :process]
@@ -138,7 +138,7 @@ defmodule HELF.Mailer do
   end
 
   @spec await(AsyncEmail.t, timeout :: non_neg_integer) ::
-    {:ok, Email.t}
+    {:ok, SentEmail.t}
     | {:error, email}
   @doc """
   Awaits until email is sent, will raise `RuntimeError` on timeout.
@@ -171,6 +171,7 @@ defmodule HELF.Mailer do
   @spec send(email, params :: [{:mailers, [module, ...]}]) ::
     {:ok, SentEmail.t}
     | {:error, email}
+    | {:error, :internal_error}
   @doc """
   Sends the `email`, optionally accepts a `mailers` keyword.
   """
@@ -184,6 +185,9 @@ defmodule HELF.Mailer do
           :timeout -> {:error, :internal_error}
           msg -> msg
         end
+      after
+        5_000 ->
+          {:error, :internal_error}
     end
   end
 
@@ -208,8 +212,8 @@ defmodule HELF.Mailer do
     end)
   end
 
-  @spec wait_message(SentEmail.t, timeout :: non_neg_integer) ::
-    {:ok, EmailSent.t}
+  @spec wait_message(reference, timeout :: non_neg_integer) ::
+    {:ok, SentEmail.t}
     | {:error, email}
     | :timeout
   # Blocks until email is sent or timeout is reached.
