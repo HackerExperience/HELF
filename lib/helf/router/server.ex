@@ -146,8 +146,4 @@ defmodule HELF.Router.Server do
         {:error, :decode_error}
     end
   end
-
-  defp default_internal_error(),
-    do: %{code: 500, data: %{}}
-
 end

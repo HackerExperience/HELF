@@ -190,10 +190,8 @@ defmodule HELF.Mailer do
   @spec do_send(email :: Bamboo.Email.t, mailers :: [module, ...]) ::
     {:ok, SentEmail.t}
     | :error
-  @docp """
-  Tries to send the email using the first available mailer, then fallbacks
-  to the next mailer on error.
-  """
+  # Tries to send the email using the first available mailer, then fallbacks
+  # to the next mailer on error.
   defp do_send(email, mailers) do
     Enum.reduce_while(mailers, :error, fn mailer, _ ->
       try do
@@ -214,9 +212,7 @@ defmodule HELF.Mailer do
     {:ok, EmailSent.t}
     | {:error, email}
     | :timeout
-  @docp """
-  Blocks until email is sent or timeout is reached.
-  """
+  # Blocks until email is sent or timeout is reached.
   defp wait_message(reference, timeout) do
     receive do
       {:email, :success, ^reference, email_sent} ->
@@ -230,9 +226,7 @@ defmodule HELF.Mailer do
   end
 
   @spec compose(email, params) :: email
-  @docp """
-  Composes the email using keywords.
-  """
+  # Composes the email using keywords.
   defp compose(email, [{:from, val}| t]) do
     email
     |> from(val)
