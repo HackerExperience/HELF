@@ -89,7 +89,7 @@ parallel (
     }
   },
   'Tests': {
-    node('helix') {
+    node('elixir') {
       stage('Tests') {
         step([$class: 'WsCleanup'])
 
