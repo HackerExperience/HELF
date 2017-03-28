@@ -4,9 +4,6 @@ node('elixir') {
   stage('Pre-build') {
     step([$class: 'WsCleanup'])
 
-    env.BUILD_VERSION = sh(script: 'date +%Y.%m.%d%H%M', returnStdout: true).trim()
-    def ARTIFACT_PATH = "${env.BRANCH_NAME}/${env.BUILD_VERSION}"
-
     checkout scm
 
     sh 'mix local.hex --force'
@@ -16,19 +13,40 @@ node('elixir') {
 
     stash name: 'source', useDefaultExcludes: false
   }
-
-  stage('Build') {
-    step([$class: 'WsCleanup'])
-
-    unstash 'source'
-
-    withEnv (['MIX_ENV=test']) {
-      sh 'mix compile'
-    }
-
-    stash 'build'
-  }
 }
+
+parallel (
+  'Build [test]': {
+    node('elixir') {
+      stage('Build [test]') {
+        step([$class: 'WsCleanup'])
+
+        unstash 'source'
+
+        withEnv (['MIX_ENV=test']) {
+          sh 'mix compile'
+        }
+
+        stash 'build-test'
+      }
+    }
+  },
+  'Build [prod]': {
+    node('elixir') {
+      stage('Build [prod]') {
+        step([$class: 'WsCleanup'])
+
+        unstash 'source'
+
+        withEnv (['MIX_ENV=prod']) {
+          sh 'mix compile'
+        }
+
+        stash 'build-prod'
+      }
+    }
+  }
+)
 
 parallel (
   // 'Lint': {
@@ -37,7 +55,7 @@ parallel (
   //       step([$class: 'WsCleanup'])
 
   //       unstash 'source'
-  //       unstash 'build'
+  //       unstash 'build-test'
 
   //       withEnv (['MIX_ENV=test']) {
   //         sh "mix credo --strict"
@@ -50,36 +68,35 @@ parallel (
       stage('Type validation') {
         step([$class: 'WsCleanup'])
 
-        unstash 'build'
+        unstash 'build-prod'
 
         // HACK: mix complains if I don't run deps.get again, not sure why
         sh "mix deps.get"
 
         // Reuse existing plt
-        sh "cp ~/.mix/helf/*test*.plt* _build/test || :"
+        sh "cp ~/.mix/helf/*prod*.plt* _build/prod || :"
 
-        withEnv (['MIX_ENV=test']) {
+        withEnv (['MIX_ENV=prod']) {
           sh "mix dialyzer --halt-exit-status"
         }
 
         // Store newly generated plt
         // Do it on two commands because we want it failing if .plt is not found
-        sh "cp _build/test/*.plt ~/.mix/helf/"
-        sh "cp _build/test/*.plt.hash ~/.mix/helf/"
+        sh "cp _build/prod/*.plt ~/.mix/helf/"
+        sh "cp _build/prod/*.plt.hash ~/.mix/helf/"
       }
 
     }
   },
   'Tests': {
-    node('elixir') {
+    node('helix') {
       stage('Tests') {
         step([$class: 'WsCleanup'])
 
         unstash 'source'
-        unstash 'build'
+        unstash 'build-test'
 
         withEnv (['MIX_ENV=test']) {
-          // Unset debug flag, load env vars on ~/.profile & run mix test
           sh 'mix test'
         }
       }
