@@ -1,5 +1,11 @@
 defmodule HELF.Flow do
 
+  # TODO: make this configurable
+  @driver Mix.env == :test && HELF.Flow.Driver.Sync || HELF.Flow.Driver.Async
+
+  def __driver__,
+    do: @driver
+
   defmacro flowing(do: {:with, meta, args}) do
     args = Enum.map(args, fn
       blocks = [_|_] ->
@@ -43,11 +49,19 @@ defmodule HELF.Flow do
     command = {:with, meta, args}
 
     quote do
-      unquote(__MODULE__).__start__()
-      return = unquote(command)
-      unquote(__MODULE__).__finish__()
+      try do
+        unquote(__MODULE__).__start__()
+        return = unquote(command)
+        unquote(__MODULE__).__finish__()
 
-      return
+        return
+      rescue
+        exception ->
+          stacktrace = System.stacktrace()
+          unquote(__MODULE__).__execute_fail__()
+
+          reraise exception, stacktrace
+      end
     end
   end
 
@@ -154,7 +168,7 @@ defmodule HELF.Flow do
   def __execute_success__ do
     case get_flow() do
       {flow, 1} ->
-        send flow, :success
+        __driver__().execute_success(flow)
         Process.delete(:heflow)
       _ ->
         :ok
@@ -165,7 +179,7 @@ defmodule HELF.Flow do
   def __execute_fail__ do
     case get_flow() do
       {flow, 1} ->
-        send flow, :fail
+        __driver__().execute_fail(flow)
         Process.delete(:heflow)
       _ ->
         :ok
