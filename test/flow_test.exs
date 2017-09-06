@@ -71,6 +71,25 @@ defmodule HELF.FlowTest do
       assert :yep == return
       refute_receive :fail
     end
+
+    test "is executed if flow raises" do
+      me = self()
+
+      assert_raise RuntimeError, "boop", fn ->
+        flowing do
+          with \
+            on_fail(fn -> send me, :fail end),
+            {:ok, _} <- {:ok, :success},
+            raise("boop"),
+            {:ok, _} <- {:ok, :success}
+          do
+            :ok
+          end
+        end
+      end
+
+      assert_receive :fail
+    end
   end
 
   describe "on_done" do
@@ -104,6 +123,25 @@ defmodule HELF.FlowTest do
 
       assert {:error, :failed} == return
       assert_receive :done
+    end
+
+    test "is executed if flow raises" do
+      me = self()
+
+      assert_raise RuntimeError, "boop", fn ->
+        flowing do
+          with \
+            on_done(fn -> send me, :fail end),
+            {:ok, _} <- {:ok, :success},
+            raise("boop"),
+            {:ok, _} <- {:ok, :success}
+          do
+            :ok
+          end
+        end
+      end
+
+      assert_receive :fail
     end
   end
 

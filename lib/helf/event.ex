@@ -1,8 +1,13 @@
 defmodule HELF.Event do
 
-  defmacro __using__(_args) do
+  defmacro __using__(args) do
+    default_driver = if Mix.env == :test, do: &apply/3, else: &spawn/3
+    driver = Keyword.get(args, :driver, default_driver)
+
     quote do
       import unquote(__MODULE__), only: [event: 3, event: 4]
+
+      @driver unquote(driver)
 
       Module.register_attribute(__MODULE__, :helf_event_events, accumulate: true)
 
@@ -31,14 +36,15 @@ defmodule HELF.Event do
       for {struct_module, handlers} <- events do
         defp handle_event(e = %unquote(struct_module){}) do
           Enum.each(unquote(handlers), fn {module, function} ->
-            spawn(module, function, [e])
+            do_handle(module, function, e)
           end)
-
-          :ok
         end
       end
       defp handle_event(%_{}),
         do: :noop
+
+      defp do_handle(m, f, event),
+        do: unquote(@driver).(m, f, [event])
 
       @spec size(struct) :: non_neg_integer
       for {struct_module, handlers} <- events do

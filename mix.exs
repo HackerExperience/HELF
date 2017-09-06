@@ -6,6 +6,7 @@ defmodule HELF.Mixfile do
       app: :helf,
       version: "0.0.1",
       elixir: "~> 1.3",
+      dialyzer: [plt_add_apps: [:mix]],
       deps: deps()
     ]
   end
