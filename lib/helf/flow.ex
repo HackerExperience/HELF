@@ -1,7 +1,11 @@
 defmodule HELF.Flow do
 
-  # TODO: make this configurable
-  @driver Mix.env == :test && HELF.Flow.Driver.Sync || HELF.Flow.Driver.Async
+  case Application.get_env(:helf, :driver, :async) do
+    :sync ->
+      @driver HELF.Flow.Driver.Sync
+    :async ->
+      @driver HELF.Flow.Driver.Async
+  end
 
   def __driver__,
     do: @driver
