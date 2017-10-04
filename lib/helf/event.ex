@@ -32,7 +32,7 @@ defmodule HELF.Event do
 
       # Now we'll add "catch all" events, i.e. events registered as `all_events`
       events = Enum.map(events, fn {event, handlers} ->
-        {event, handlers ++ @helf_event_events_all}
+        {event, Enum.uniq(handlers ++ @helf_event_events_all)}
       end)
 
       # Note that this is somewhat temporary. In the future we'll probably just
