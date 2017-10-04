@@ -5,9 +5,11 @@ defmodule HELF.Mixfile do
     [
       app: :helf,
       version: "0.0.1",
-      elixir: "~> 1.3",
+      elixir: "~> 1.5",
       dialyzer: [plt_add_apps: [:mix]],
-      deps: deps()
+      deps: deps(),
+      description: description(),
+      package: package()
     ]
   end
 
@@ -17,10 +19,22 @@ defmodule HELF.Mixfile do
 
   defp deps do
     [
-      {:cowboy,"~> 1.0"},
-      {:poison, "~> 2.0"},
+      {:cowboy,"~> 1.1.2"},
+      {:poison, "~> 3.1.0"},
       {:bamboo, "~> 0.8"},
-      {:hebroker, github: "HackerExperience/HeBroker"}
+      {:ex_doc, ">= 0.0.0", only: :dev}
+    ]
+  end
+
+  defp description do
+    "HELF - Hacker Experience Lovely Framework"
+  end
+
+  defp package do
+    [
+      maintainers: ["Renato Massaro"],
+      licenses: ["Apache 2.0"],
+      links: %{"GitHub" => "https://github.com/HackerExperience/HELF"}
     ]
   end
 end
