@@ -1,5 +1,7 @@
 defmodule HELF.Event do
 
+  @type t :: struct
+
   defmacro __using__(args) do
     default_driver = if Mix.env == :test, do: &apply/3, else: &spawn/3
     driver = Keyword.get(args, :driver, default_driver)
