@@ -5,11 +5,13 @@ defmodule HELF.Event do
     driver = Keyword.get(args, :driver, default_driver)
 
     quote do
-      import unquote(__MODULE__), only: [event: 3, event: 4]
+      import unquote(__MODULE__),
+        only: [event: 3, event: 4, all_events: 2, all_events: 3]
 
       @driver unquote(driver)
 
       Module.register_attribute(__MODULE__, :helf_event_events, accumulate: true)
+      Module.register_attribute(__MODULE__, :helf_event_events_all, accumulate: true)
 
       @before_compile unquote(__MODULE__)
 
@@ -27,6 +29,11 @@ defmodule HELF.Event do
         @helf_event_events,
         &elem(&1, 0),
         fn {_, handler, _opts} -> handler end)
+
+      # Now we'll add "catch all" events, i.e. events registered as `all_events`
+      events = Enum.map(events, fn {event, handlers} ->
+        {event, handlers ++ @helf_event_events_all}
+      end)
 
       # Note that this is somewhat temporary. In the future we'll probably just
       # define a supervisor structure that defines GenStage workers to execute
@@ -93,6 +100,31 @@ defmodule HELF.Event do
       end
 
       Module.put_attribute(__MODULE__, :helf_event_events, event)
+    end
+  end
+
+  defmacro all_events(handler_module, handler_function, _opts \\ []) do
+    quote do
+      handler_module = unquote(handler_module)
+      handler_function = unquote(handler_function)
+      event = {handler_module, handler_function}
+
+      cond do
+        not Code.ensure_compiled?(handler_module) ->
+          raise """
+          invalid module passed as event handler
+
+          module: #{inspect handler_module}
+          """
+        not :erlang.function_exported(handler_module, handler_function, 1) ->
+          raise """
+          module #{inspect handler_module} does not implement #{inspect handler_function}/1 and thus cannot be an event handler
+          """
+        :else ->
+          "Everything is fine! :)"
+      end
+
+      Module.put_attribute(__MODULE__, :helf_event_events_all, event)
     end
   end
 end
