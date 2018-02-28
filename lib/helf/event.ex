@@ -4,7 +4,21 @@ defmodule HELF.Event do
 
   defmacro __using__(args) do
     default_driver = if Mix.env == :test, do: &apply/3, else: &spawn/3
-    driver = Keyword.get(args, :driver, default_driver)
+
+    driver =
+      cond do
+        args[:driver] ->
+          args[:driver]
+
+        System.get_env("HELF_EVENT_FORCE_SYNC") ->
+          &apply/3
+
+        System.get_env("HELF_FORCE_SYNC") ->
+          &apply/3
+
+        true ->
+          default_driver
+      end
 
     quote do
       import unquote(__MODULE__),

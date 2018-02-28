@@ -1,10 +1,19 @@
 defmodule HELF.Flow do
 
-  case Application.get_env(:helf, :driver, :async) do
-    :sync ->
+  cond do
+    System.get_env("HELF_FLOW_FORCE_SYNC") ->
       @driver HELF.Flow.Driver.Sync
-    :async ->
-      @driver HELF.Flow.Driver.Async
+
+    System.get_env("HELF_FORCE_SYNC") ->
+      @driver HELF.Flow.Driver.Sync
+
+    true ->
+      case Application.get_env(:helf, :driver, :async) do
+        :sync ->
+          @driver HELF.Flow.Driver.Sync
+        :async ->
+          @driver HELF.Flow.Driver.Async
+      end
   end
 
   def __driver__,
